@@ -1,0 +1,36 @@
+Name = 'Isthmos Edificans'
+Author = 'Ki11aWi11'
+Version = '1.0'
+Description = 'Fight your way across the Isthmos!'
+extensions = { 'water_damage' : 20,}
+
+# script
+from pyspades.constants import *
+import random
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        x, y, z = 17, 237, 25
+        return (x, y, z)
+    if entity_id == GREEN_FLAG:
+        x, y, z = 490, 237, 25
+        return (x, y, z)
+    if entity_id == BLUE_BASE:
+        x, y, z = 17, 273, 25
+        return (x, y, z)
+    if entity_id == GREEN_BASE:
+        x, y, z = 490, 273, 25
+        return (x, y, z)
+
+def get_spawn_location(connection):
+    if connection.team is connection.protocol.blue_team:
+        x = random.randrange(0,34)
+        y = random.randrange(212,298)
+        z1 = 26
+        return (x, y, z1-1)
+    if connection.team is connection.protocol.green_team:
+        x = random.randrange(477,511)
+        y = random.randrange(212,298)
+        z1 = 26
+        return (x, y, z1-1)
+

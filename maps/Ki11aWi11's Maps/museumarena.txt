@@ -1,0 +1,27 @@
+name = 'AoS Museum'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Welcome to the AoS Museum')
+
+fog = (0, 0, 30)
+
+extensions = {
+
+     'water_damage' : 100,
+
+     'arena': True,
+
+     'arena_blue_spawn' : (328, 216, 49),
+
+     'arena_green_spawn' : (192, 219, 49),
+
+     'arena_gates' : ((194, 220, 46), (326, 216, 46))
+
+     'boundary_damage' : {'left' : 189,
+                                    'right' : 331,
+                                    'top' : 172,
+                                    'bottom' : 263,
+                                    'damage': 100 } }

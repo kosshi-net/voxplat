@@ -1,0 +1,23 @@
+name = 'Space Station'
+
+version = '1.1'
+
+author = 'Ki11aWi11'
+
+description = ('In Space, no one can hear you scream...')
+
+fog = (256, 256, 256)
+
+extensions = {
+
+     'water_damage' : 100,
+
+     'arena': True,
+
+     'arena_blue_spawn' : (231, 291, 22),
+
+     'arena_green_spawn' : (337, 291, 23),
+
+     'arena_gates' : ((233, 291, 22), (233, 291, 21), (321, 291, 22), (321, 291, 21))
+
+}

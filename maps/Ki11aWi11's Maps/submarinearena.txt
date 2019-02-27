@@ -1,0 +1,26 @@
+name = 'Submarine'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Take control of this Submarine before its too late!')
+
+fog = (232, 128, 5)
+extensions = {
+
+     'water_damage' : 100,
+
+     'arena': True,
+
+     'arena_blue_spawn' : (258, 110, 43),
+
+     'arena_green_spawn' : (258, 326, 43),
+
+     'arena_gates' : ((258, 114, 42), (257, 332, 42), (257, 320, 43))
+
+     'boundary_damage' : {'left' : 238,
+                                    'right' : 276,
+                                    'top' : 84,
+                                    'bottom' : 345,
+                                    'damage': 20 } }

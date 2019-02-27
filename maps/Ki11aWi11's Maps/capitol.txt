@@ -1,0 +1,34 @@
+Name = 'Capitol'
+Author = 'Ki11aWi11'
+Version = '1.3'
+Description = 'Prepare for intense urban warfare as you try to occupty the Capitol!'
+
+# script
+from pyspades.constants import *
+import random
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        x, y, z = 76, 155, 57
+        return (x, y, z)
+    if entity_id == GREEN_FLAG:
+        x, y, z = 435, 154, 57
+        return (x, y, z)
+    if entity_id == BLUE_BASE:
+        x, y, z = 173, 224, 59
+        return (x, y, z)
+    if entity_id == GREEN_BASE:
+        x, y, z = 338, 224, 59
+        return (x, y, z)
+
+def get_spawn_location(connection):
+    if connection.team is connection.protocol.blue_team:
+        x = random.randrange(90,219)
+        y = random.randrange(189,359)
+        z1 = 59
+        return (x, y, z1-1)
+    if connection.team is connection.protocol.green_team:
+        x = random.randrange(300,413)
+        y = random.randrange(189,359)
+        z1 = 59
+        return (x, y, z1-1)

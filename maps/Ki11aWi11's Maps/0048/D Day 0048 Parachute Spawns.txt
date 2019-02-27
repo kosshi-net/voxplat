@@ -1,0 +1,39 @@
+name = 'D-Day 0048'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Parachute into Normandy and destroy German artillery!')
+
+fog = (0, 0, 0)
+
+
+# script
+from pyspades.constants import *
+import random
+
+def get_spawn_location(connection):
+    if connection.team is connection.protocol.blue_team:
+        # sets a static spawn for just the blue team, but you could use "green_team" too.
+        x=166
+        y=325
+        z=7
+        x2=107
+        y2=426
+        z2=7
+        x3=68
+        y3=310
+        z3=10
+        x4=154
+        y4=175
+        z4=9
+        x5=55
+        y5=167
+        z5=7
+        x6=74
+        y6=62
+        z6=12
+        x7, y7, z7 = random.choice([(x,y,z),(x2,y2,z2),(x3,y3,z3),(x4,y4,z4),(x5,y5,z5),(x6,y6,z6)])
+        return (x7, y7, z7)
+

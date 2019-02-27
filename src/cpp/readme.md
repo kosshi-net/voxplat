@@ -1,0 +1,1 @@
+# Quarantee for C++ plague 

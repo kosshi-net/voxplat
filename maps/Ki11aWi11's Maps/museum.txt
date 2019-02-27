@@ -1,0 +1,9 @@
+name = 'AoS Museum'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Welcome to the AoS Museum')
+
+extensions = { 'water_damage' : 10,}

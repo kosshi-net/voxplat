@@ -1,0 +1,39 @@
+name = 'Realistic Bridge'
+
+version = '1.1'
+
+author = 'Ki11aWi11'
+
+description = ('A bridge traversing a wide valley.')
+
+extensions = { 'water_damage' : 12,}
+
+# script
+from pyspades.constants import *
+import random
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        x, y, z = 7, 264, 14
+        return (x, y, z)
+    if entity_id == GREEN_FLAG:
+        x, y, z = 505, 264, 14
+        return (x, y, z)
+    if entity_id == BLUE_BASE:
+        x, y, z = 7, 246, 14
+        return (x, y, z)
+    if entity_id == GREEN_BASE:
+        x, y, z = 505, 246, 14
+        return (x, y, z)
+
+def get_spawn_location(connection):
+    if connection.team is connection.protocol.blue_team:
+        x = random.randrange(1,97)
+        y = random.randrange(238,272)
+        z1 = 14
+        return (x, y, z1-1)
+    if connection.team is connection.protocol.green_team:
+        x = random.randrange(420,511)
+        y = random.randrange(238,272)
+        z1 = 14
+        return (x, y, z1-1)

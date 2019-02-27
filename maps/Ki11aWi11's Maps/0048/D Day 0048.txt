@@ -1,0 +1,11 @@
+name = 'D-Day 0048'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Parachute into Normandy and destroy German artillery!')
+
+fog = (0, 0, 0)
+
+

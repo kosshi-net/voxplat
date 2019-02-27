@@ -1,0 +1,48 @@
+name = 'Lone Tower'
+version = '1.0'
+author = 'Ki11aWi11'
+description = 'An easy to defend tower with attackers coming from all sides!'
+
+from pyspades.constants import *
+from pyspades.server import ServerConnection
+from random import choice
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        z = team.protocol.map.get_z(64, 257)
+        return (256, 256, 55)
+    if entity_id == BLUE_BASE:
+        z = team.protocol.map.get_z (42, 257)
+        return (263, 255, 43)
+    if entity_id == GREEN_BASE:
+        z = team.protocol.map.get_z(449, 255)
+        return (449, 255, z)
+
+spawn_locations_green = [
+    	(254, 73),
+    	(378, 151),
+    	(449, 253),
+    	(390, 388),
+    	(267, 446),
+    	(66, 261)
+]
+
+spawn_locations_blue = [
+    	(266, 266),
+    	(252, 271),
+    	(240, 266),
+    	(237, 253),
+    	(238, 241),
+    	(253, 234),
+	(269, 241)
+]
+
+def get_spawn_location(connection):
+    if connection.team is connection.protocol.green_team:
+	x, y = choice(spawn_locations_green)
+	z = connection.protocol.map.get_z(x, y)
+	return x, y, z
+    if connection.team is connection.protocol.blue_team:
+	x, y = choice(spawn_locations_blue)
+	z = connection.protocol.map.get_z(x, y)
+	return x, y, z

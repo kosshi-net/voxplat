@@ -1,0 +1,4 @@
+name = 'Metropolis'
+version = '1.0'
+author = 'Ki11aWi11'
+description = 'Take the fight to the city'

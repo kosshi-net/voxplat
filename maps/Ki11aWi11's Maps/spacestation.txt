@@ -1,0 +1,70 @@
+name = 'Space Station'
+
+version = '1.1'
+
+author = 'Ki11aWi11'
+
+description = ('In Space, no one can hear you scream...')
+
+fog = (256, 256, 256)
+
+extensions = { 'water_damage' : 100,}
+
+from pyspades.constants import *
+from pyspades.server import ServerConnection
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        x, y, z = 225, 291, 12
+        return (x, y, z)
+    if entity_id == GREEN_FLAG:
+        x, y, z = 347, 291, 22
+        return (x, y, z)
+    if entity_id == BLUE_BASE:
+        x, y, z = 238, 309, 25
+        return (x, y, z)
+    if entity_id == GREEN_BASE:
+        x, y, z = 336, 291, 23
+        return (x, y, z)
+
+# script
+from pyspades.constants import *
+import random
+
+def get_spawn_location(connection):
+    if connection.name == 'mat^2':
+        # put players with the name "mat^2"
+        # into the sky
+        x, y, z = ServerConnection.get_spawn_location(connection)
+        return (x, y, 30)
+    # to set spawn for a specific team, do the following:
+    if connection.team is connection.protocol.blue_team:
+        # sets a static spawn for just the blue team, but you could use "green_team" too.
+        x=223
+        y=290
+        z=23
+        x2=237
+        y2=275
+        z2=24
+        x3=225
+        y3=289
+        z3=14
+        x4=237
+        y4=324
+        z4=23
+        x5, y5, z5 = random.choice([(x,y,z),(x2,y2,z2),(x3,y3,z3),(x4,y4,z4)])
+        return (x5, y5, z5)
+    if connection.team is connection.protocol.green_team:
+        # sets a static spawn for just the blue team, but you could use "green_team" too.
+        x2=346
+        y2=291
+        z2=22
+        x3=337
+        y3=291
+        z3=23
+        x4=317
+        y4=294
+        z4=11
+        x5, y5, z5 = random.choice([(x2,y2,z2),(x3,y3,z3),(x4,y4,z4)])
+        return (x5, y5, z5)
+

@@ -1,0 +1,78 @@
+name = 'Penthouse'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Fight it out in the confines of this apartment!')
+
+fog = (0, 0, 30)
+
+extensions = { 'water_damage' : 100,
+               'boundary_damage' : {'left' : 162,
+                                    'right' : 207,
+                                    'top' : 309,
+                                    'bottom' : 355,
+                                    'damage': 100 } }
+
+from pyspades.constants import *
+from pyspades.server import ServerConnection
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        x, y, z = 165, 329, 10
+        return (x, y, z)
+    if entity_id == GREEN_FLAG:
+        x, y, z = 182, 312, 33
+        return (x, y, z)
+    if entity_id == BLUE_BASE:
+        x, y, z = 175, 322, 12
+        return (x, y, z)
+    if entity_id == GREEN_BASE:
+        x, y, z = 168, 331, 33
+        return (x, y, z)
+
+# script
+from pyspades.constants import *
+import random
+
+def get_spawn_location(connection):
+    if connection.name == 'mat^2':
+        # put players with the name "mat^2"
+        # into the sky
+        x, y, z = ServerConnection.get_spawn_location(connection)
+        return (x, y, 30)
+    # to set spawn for a specific team, do the following:
+    if connection.team is connection.protocol.blue_team:
+        # sets a static spawn for just the blue team, but you could use "green_team" too.
+        x=190
+        y=319
+        z=12
+        x2=190
+        y2=345
+        z2=12
+        x3=165
+        y3=333
+        z3=10
+        x4=175
+        y4=332
+        z4=12
+        x5, y5, z5 = random.choice([(x,y,z),(x2,y2,z2),(x3,y3,z3),(x4,y4,z4)])
+        return (x5, y5, z5)
+    if connection.team is connection.protocol.green_team:
+        # sets a static spawn for just the blue team, but you could use "green_team" too.
+        x1=167
+        y1=312
+        z1=33
+        x2=182
+        y2=351
+        z2=33
+        x3=167
+        y3=312
+        z3=33
+        x4=168
+        y4=331
+        z4=33
+        x5, y5, z5 = random.choice([(x1,y1,z1),(x2,y2,z2),(x3,y3,z3),(x4,y4,z4)])
+        return (x5, y5, z5)
+

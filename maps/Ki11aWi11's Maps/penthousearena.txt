@@ -1,0 +1,27 @@
+name = 'Penthouse'
+
+version = '1.0'
+
+author = 'Ki11aWi11'
+
+description = ('Seize control of this expensive apartment.')
+
+fog = (0, 0, 30)
+
+extensions = {
+
+     'water_damage' : 100,
+
+     'arena': True,
+
+     'arena_blue_spawn' : (165, 333, 10),
+
+     'arena_green_spawn' : (168, 332, 33),
+
+     'arena_gates' : ((168, 333, 9), (170, 331, 31))
+
+     'boundary_damage' : {'left' : 162,
+                                    'right' : 207,
+                                    'top' : 309,
+                                    'bottom' : 355,
+                                    'damage': 100 } }

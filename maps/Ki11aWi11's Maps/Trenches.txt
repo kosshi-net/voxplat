@@ -1,0 +1,34 @@
+Name = 'Trenches'
+Author = 'Ki11aWi11'
+Version = '1.1'
+Description = 'Charge across No Man's Land to seize the enemies War Plans!'
+
+# script
+from pyspades.constants import *
+import random
+
+def get_entity_location(team, entity_id):
+    if entity_id == BLUE_FLAG:
+        x, y, z = 154, 259, 54
+        return (x, y, z)
+    if entity_id == GREEN_FLAG:
+        x, y, z = 395, 254, 54
+        return (x, y, z)
+    if entity_id == BLUE_BASE:
+        x, y, z = 169, 256, 54
+        return (x, y, z)
+    if entity_id == GREEN_BASE:
+        x, y, z = 342, 255, 54
+        return (x, y, z)
+
+def get_spawn_location(connection):
+    if connection.team is connection.protocol.blue_team:
+        x = random.randrange(138,179)
+        y = random.randrange(218,293)
+        z1 = 54
+        return (x, y, z1-1)
+    if connection.team is connection.protocol.green_team:
+        x = random.randrange(342,395)
+        y = random.randrange(218,293)
+        z1 = 54
+        return (x, y, z1-1)
