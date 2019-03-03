@@ -20,6 +20,8 @@
 	add(rect_vert_glsl)\
 	add(wire_frag_glsl)\
 	add(wire_vert_glsl)\
+	add(sky_frag_glsl)\
+	add(sky_vert_glsl)\
 	add(map_vxl)\
 	add(font_ttf)\
 	add(seven_png)\

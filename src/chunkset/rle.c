@@ -59,7 +59,7 @@ Voxel *rle_compress( Voxel* data, uint32_t length )
 		
 		current = data[i];
 		
-		if( current == last && count < 0xFE){
+		if( current == last && count < 0xFF){
 			count++;
 		}else{
 			

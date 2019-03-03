@@ -197,9 +197,12 @@ void gfx_vsplat_draw(
 
 		// RENDER
 
+		int lod = c->lod;
+		if(!lod) lod = 1;
+
 		glUniform1f(
 			vsplat_shader_u_lod,
-			1<<(c->gl_vbo_lod-1)
+			1<<(lod-1)
 		);
 
 
@@ -217,10 +220,18 @@ void gfx_vsplat_draw(
 			(const void*) (3*sizeof(int16_t))
 		);
 
-		glDrawArrays( GL_POINTS, 0, c->gl_vbo_items/4);
+		glDrawArrays( GL_POINTS, 
+			c->gl_vbo_segments[lod-1]/4, 
+			c->gl_vbo_segments[lod]  /4
+		);
+//		glDrawArrays( GL_POINTS, 
+//			(c->gl_vbo_segments[1])/4, 
+//			(c->gl_vbo_segments[2])/4
+//		);
 		//glDrawArrays( GL_TRIANGLES, 0, c->gl_vbo_items/4);
 
-		*item_count += c->gl_vbo_items/4;
+
+		*item_count += c->gl_vbo_segments[c->lod]  /4;
 
 		upload:
 
@@ -239,6 +250,11 @@ void gfx_vsplat_draw(
 			c->gl_vbo_items = c->gl_vbo_local_items;
 			c->gl_vbo_lod = c->gl_vbo_local_lod;
 			c->gl_vbo_local = NULL;
+
+			c->gl_vbo_segments[0] = c->gl_vbo_local_segments[0];
+			c->gl_vbo_segments[1] = c->gl_vbo_local_segments[1];
+			c->gl_vbo_segments[2] = c->gl_vbo_local_segments[2];
+			c->gl_vbo_segments[3] = c->gl_vbo_local_segments[3];
 			
 		
 			if( c->gl_ibo_local != NULL ){

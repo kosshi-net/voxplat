@@ -21,6 +21,7 @@ add_library( gfx
 	gfx.c
 	gfx/text.c
 	gfx/rect.c
+	gfx/sky.c
 	gfx/aabb.c
 	
 	gfx/crosshair.c

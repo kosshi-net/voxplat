@@ -77,14 +77,14 @@ void chunkset_clear( struct ChunkSet *set )
 {
 	logf_info( "Clearing" );
 	uint32_t num_voxels = set->root * set->root * set->root;
-		
+	uint32_t i = 0;
 	uint16_t vec[3];
-	for( vec[0] = 0; vec[0] < set->max[0]; vec[0]++  )
-	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
 	for( vec[2] = 0; vec[2] < set->max[2]; vec[2]++  )
+	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
+	for( vec[0] = 0; vec[0] < set->max[0]; vec[0]++  )
 	{
 
-		uint32_t i = flatten3( vec, set->max_bitw );
+		//uint32_t i = flatten3( vec, set->max_bitw );
 //		logf_info( "Clearing chunk %iu", i );
 
 		struct ChunkMD *c = &set->chunks[i];
@@ -100,6 +100,7 @@ void chunkset_clear( struct ChunkSet *set )
 		c->dirty = 1;
 		
 		c->gl_vbo =  0;
+		i++;
 
 	}
 
@@ -109,10 +110,221 @@ void chunkset_clear( struct ChunkSet *set )
 	c->last_access = ctx_time();
 	c->count = num_voxels;
 	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
-
 }
 
+void chunkset_clear_import( struct ChunkSet *set )
+{
+	logf_info( "Clearing" );
+	uint32_t num_voxels = set->root * set->root * set->root;
+	uint32_t i = 0;
 
+	Voxel *buffer = mem_calloc( num_voxels * sizeof(Voxel) );
+
+	FILE *fptr;
+	fptr = fopen("default.bin","rb");
+
+	if( fptr == NULL ) panic();
+
+	char header[] = "VOXPLAT0000";
+
+	fread(buffer, sizeof(header), 1, fptr);
+
+
+	uint16_t vec[3];
+	for( vec[2] = 0; vec[2] < set->max[2]; vec[2]++  )
+	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
+	for( vec[0] = 0; vec[0] < set->max[0]; vec[0]++  )
+	{
+
+		struct ChunkMD *c = &set->chunks[i];
+
+		pthread_mutex_init(&c->mutex, NULL);
+
+		c->lod = -1;
+		c->last_access = ctx_time();
+		c->count = num_voxels;
+
+		uint32_t buffer_index = 0;
+		while(1){
+			fread( buffer+buffer_index, 2, 1, fptr );
+
+			buffer_index+=2;
+
+			if( buffer[buffer_index-2] == 0 ) break;
+
+			// Read two bytes to buffer
+			// If null null, write
+		}
+
+		c->rle = mem_alloc( buffer_index );
+
+		memcpy( c->rle, buffer, buffer_index );
+		memcpy( c->offset, vec, 3*sizeof(uint16_t) );
+
+		c->dirty = 1;
+		
+		c->gl_vbo =  0;
+		i++;
+
+	}
+	fclose(fptr);
+
+	mem_free(buffer);
+	// Nullchunk
+	set->null_chunk = mem_calloc(sizeof(struct ChunkMD));
+	struct ChunkMD *c = set->null_chunk;
+	c->last_access = ctx_time();
+	c->count = num_voxels;
+	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+
+	// Prepare rle lib
+	mem_free( rle_compress(c->voxels, num_voxels) );
+
+
+	logf_info("Imported");
+}
+
+uint32_t shadow_map_index( 
+	struct ChunkSet *set, 
+	uint32_t x, 
+	uint32_t y 
+){
+	return y * (set->max[0]<<set->root_bitw) + x;
+}
+
+uint8_t sample_shadow( 
+	struct ChunkSet *set, 
+	uint32_t *ws 
+){
+	return !
+		(set->shadow_map[ shadow_map_index(
+			set,
+			ws[0]-ws[1],
+			ws[2]-ws[1]
+		) & 16777215 ] < ws[1]+1)
+		;
+}
+
+uint8_t sample_shadow_c( 
+	struct ChunkSet *set, 
+	struct ChunkMD *c, 
+	uint16_t *ws 
+){
+	return !
+		(set->shadow_map[ shadow_map_index(
+			set,
+			(ws[0] + (c->offset[0]<<set->root_bitw))-ws[1],
+			(ws[2] + (c->offset[2]<<set->root_bitw))-ws[1]
+		) & 16777215 ] < ws[1]+1)
+		;
+}
+
+void shadow_place_update(
+	struct ChunkSet *set,
+	uint32_t *ws
+){
+	// If voxel shaded, dont do shit
+	if( sample_shadow( set, ws ) ) return;
+	//uint32_t wsy = (set->max[1] << set->root_bitw);
+	uint32_t sx = ws[0]-(ws[1]);
+	uint32_t sy = ws[2]-(ws[1]);
+	set->shadow_map[ shadow_map_index(set, sx, sy) & (set->shadow_map_length-1) ] = ws[1];
+}
+
+void shadow_break_update(
+	struct ChunkSet *set,
+	uint32_t *ws
+){
+	// If voxel is the occluder, reflow
+	if( sample_shadow( set, ws ) ) return;
+
+//	uint32_t wsy = (set->max[1] << set->root_bitw);
+
+	uint32_t sx = ws[0]-(ws[1]);
+	uint32_t sy = ws[2]-(ws[1]);
+
+	for (uint32_t y = ws[1]; y > 0; y--){
+
+		uint32_t wsc[3];
+		wsc[0] = sx+y;
+		wsc[1] = y;
+		wsc[2] = sy+y;
+
+		if( chunkset_edit_read( set, wsc ) ){
+			set->shadow_map[ shadow_map_index(set, sx, sy) & (set->shadow_map_length-1) ] = y;
+			//printf("%i\n", ws[1] );
+			return;
+		}
+	}
+}
+
+void shadow_update(
+	struct ChunkSet *set,
+	uint32_t *ws
+){
+	uint32_t wsy = (set->max[1] << set->root_bitw);
+
+	uint32_t sx = ws[0]-(ws[1]);
+	uint32_t sy = ws[2]-(ws[1]);
+
+	for (uint32_t y = wsy; y > 0; y--){
+
+		uint32_t wsc[3];
+		wsc[0] = sx+y;
+		wsc[1] = y;
+		wsc[2] = sy+y;
+
+		if( chunkset_edit_read( set, wsc ) ){
+			set->shadow_map[ shadow_map_index(set, sx, sy) & (set->shadow_map_length-1) ] = y;
+			//printf("%i\n", ws[1] );
+			return;
+		}
+	}
+}
+
+void chunkset_create_shadow_map( 
+	struct ChunkSet *set
+ ){
+
+
+	uint32_t wsy = (set->max[1] << set->root_bitw);
+
+	set->shadow_map_size[0] = (set->max[0] << set->root_bitw)+wsy;
+	set->shadow_map_size[1] = (set->max[2] << set->root_bitw)+wsy;
+
+	set->shadow_map_length = 
+		 (set->max[0]<<set->root_bitw)
+		*(set->max[2]<<set->root_bitw);
+
+	set->shadow_map = mem_alloc( 
+		 set->shadow_map_size[0] * 
+		 set->shadow_map_size[1] * 
+		 sizeof(uint16_t)
+	);
+	for (int i = 0; i < set->shadow_map_size[0]*set->shadow_map_size[1]; ++i)
+	{
+		set->shadow_map[i] = 0;
+	}
+/*
+	logf_info( "Calculating shadows" );
+	double t = ctx_time();
+
+	//for (ws[0] = 0; ws[0] < map_x; ++ws[0])
+	#pragma	omp parallel for
+	for (int i = 0; i < set->shadow_map_size[0]; ++i)
+	{
+		uint32_t ws[3];
+		ws[1] = 0;
+		ws[0] = i;
+		for (ws[2] = 0; ws[2] < set->shadow_map_size[1]; ++ws[2]) {
+			shadow_update( set, ws );
+		}
+	}
+
+
+	logf_info( "Took %.2f seconds", ctx_time()-t );
+*/
+}
 
 
 
@@ -306,19 +518,16 @@ void chunk_compress(struct ChunkMD *c){
 }
 
 
-
-//1int16_t*	mesher_geom[128] = {NULL};
-//1void* 		mesher_work[128] = {NULL};
-//1uint8_t		mesher_lock[128] = {0};
-
-
-#define MESHER_THREAD_BUFFERS 3
+#define MESHER_THREAD_BUFFERS 2
 
 struct {
 	void		*geom[MESHER_THREAD_BUFFERS];
-	uint32_t	 geom_size;
+	void		*mask[MESHER_THREAD_BUFFERS];
 	void		*work[MESHER_THREAD_BUFFERS];
 	uint32_t	 work_size;
+	uint32_t	 geom_size;
+	uint32_t	 mask_size;
+
 	uint8_t		 lock[MESHER_THREAD_BUFFERS];
 } mesher[16];
 
@@ -326,8 +535,6 @@ void chunkset_manage(
 	struct ChunkSet *set
 ){
 
-	// Create a temporary work buffer
-	//float * vertex = mem_calloc( sizeof(float) * *vertex_count );
 	int meshed_count = 0;
 
 	#pragma omp parallel for
@@ -344,14 +551,16 @@ void chunkset_manage(
 			if( mesher[omp_id].geom[buf_id] == NULL ) {
 				// Allocate!
 				mesher[omp_id].geom_size = set->root*set->root*set->root*10;
-
 				mesher[omp_id].geom[buf_id] = 
 					mem_calloc( mesher[omp_id].geom_size );
 
 				mesher[omp_id].work_size = set->root*2*set->root*2*set->root*2*sizeof(uint8_t);
-
 				mesher[omp_id].work[buf_id] = 
 					mem_calloc( mesher[omp_id].work_size );
+
+				mesher[omp_id].mask_size = set->root*2*set->root*2*set->root*2*sizeof(uint8_t);
+				mesher[omp_id].mask[buf_id] = 
+					mem_calloc( mesher[omp_id].mask_size );
 			}
 			// We found a free allocated buffer, break!
 			break; 
@@ -364,7 +573,7 @@ void chunkset_manage(
 		struct ChunkMD *c = &set->chunks[i];
 
 		if( c->dirty == 0 && 
-			c->gl_vbo_local_lod == c->lod 
+			!c->gl_vbo_local_lod == !c->lod
 		) {
 			if( c->rle == NULL 
 			&&	c->last_access+1 < ctx_time() ){
@@ -387,21 +596,54 @@ void chunkset_manage(
 		memset( mesher[omp_id].work[buf_id], 0, 
 				mesher[omp_id].work_size );
 
+		memset( mesher[omp_id].mask[buf_id], 0, 
+				mesher[omp_id].mask_size );
+
+		memset( mesher[omp_id].geom[buf_id], 0, 
+				mesher[omp_id].geom_size );
+
 		double t = ctx_time();
 		uint32_t geom_items = 0; 
 		uint32_t indx_items = 0; 
-		if( c->lod == 0 )
+		if( c->lod == 0 ) {
 			 chunk_make_mesh(
 				set, c, 
 				mesher[omp_id].geom[buf_id], &geom_items, 
 				mesher[omp_id].work[buf_id], &indx_items
 			);
-		else
+		} else {
+
+			chunk_make_mask( set, c, mesher[omp_id].mask[buf_id] );
+
+			c->gl_vbo_local_segments[0] = 0;
+
 			chunk_make_splatlist(
-				set, c, 
-				mesher[omp_id].geom[buf_id], &geom_items, 
+				set, c, 0,
+				mesher[omp_id].mask[buf_id],
+				mesher[omp_id].geom[buf_id], 
+				&geom_items
+			);
+			c->gl_vbo_local_segments[1] = geom_items;
+
+			chunk_mask_downsample( set, 1, 
+				mesher[omp_id].mask[buf_id],
 				mesher[omp_id].work[buf_id]
 			);
+
+			uint32_t geom_items2 = 0;
+			chunk_make_splatlist(
+				set, c, 1,
+				mesher[omp_id].work[buf_id],
+				&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
+				&geom_items2
+			);
+			c->gl_vbo_local_segments[2] = geom_items2;
+
+			geom_items+=geom_items2;
+
+			//logf_info( "%i %i", c->gl_vbo_local_segments[1], c->gl_vbo_local_segments[2] );
+
+		}
 
 		t = ctx_time()-t;
 		//logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);

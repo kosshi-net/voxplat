@@ -24,10 +24,14 @@ struct ChunkSet {
 	struct ChunkMD *chunks;
 
 	struct ChunkMD *null_chunk;
+
+	uint16_t *shadow_map;
+	uint32_t shadow_map_length;
+	uint32_t shadow_map_size[2];
 	
 };
 
-#define MAX_LOD_LEVEL 4
+#define MAX_LOD_LEVEL 8
 
 // Chunk MetaData
 struct ChunkMD {
@@ -40,24 +44,22 @@ struct ChunkMD {
 	uint16_t offset[3];		// In chunks
 	Voxel  *voxels;		// Pointer to voxels
 	Voxel  *rle;
-
-	// Use unsigned int instead of GLuint to avoid including opengl headers
-	// Reminder: VBO is an ID to a chunk of VRAM
 	
 	int8_t		lod;
 	uint8_t     dirty;				// Bool for Geometry outdated
 
 
-
 	void	   *gl_vbo_local;		// Temporary store for vbo data
 	uint8_t		gl_vbo_local_lod;
 	uint32_t	gl_vbo_local_items;
+	uint32_t	gl_vbo_local_segments[MAX_LOD_LEVEL];
 
 	void	   *gl_ibo_local;
 	uint32_t	gl_ibo_local_items;
 
 	uint32_t	gl_vbo;
 	uint8_t		gl_vbo_lod;
+	uint32_t	gl_vbo_segments[MAX_LOD_LEVEL];
 	uint32_t	gl_vbo_items;
 
 	uint32_t	gl_ibo;
@@ -68,6 +70,9 @@ struct ChunkMD {
 	// NEW
 /*
 	// REMOTE
+	uint8_t		splat_dirty;
+	uint8_t		 mesh_dirty;
+
 	uint32_t	gl_splat_vbo;
 	uint32_t	gl_splat_vbo_items[MAX_LOD_LEVEL];
 
@@ -84,9 +89,7 @@ struct ChunkMD {
 	uint32_t	lo_mesh_vbo_items;
 	uint32_t	lo_mesh_ibo;
 	uint32_t	lo_mesh_ibo_items;
-
 */
-
 };
 
 /*
@@ -149,6 +152,7 @@ struct ChunkMD {
 struct ChunkSet* 
 chunkset_create( uint8_t, uint8_t[]);
 void chunkset_clear( struct ChunkSet* );
+void chunkset_clear_import( struct ChunkSet* );
 
 void chunkset_manage( struct ChunkSet* );
 
@@ -166,6 +170,35 @@ void  voxel_write( struct ChunkSet*, uint32_t*, Voxel );
 uint32_t flatten3( const uint16_t* l, const uint8_t* b );
 uint32_t flatten1( const uint16_t* l, const uint16_t b );
 
+uint8_t sample_shadow( 
+	struct ChunkSet *set, 
+	uint32_t *ws 
+);
+uint8_t sample_shadow_c( 
+	struct ChunkSet *set, 
+	struct ChunkMD *c, 
+	uint16_t *ws 
+);
+void chunkset_create_shadow_map( 
+	struct ChunkSet *set
+);
+void shadow_update(
+	struct ChunkSet *set,
+	uint32_t *ws
+);
+void shadow_place_update(
+	struct ChunkSet *set,
+	uint32_t *ws
+);
+void shadow_break_update(
+	struct ChunkSet *set,
+	uint32_t *ws
+);
+uint32_t shadow_map_index( 
+	struct ChunkSet *set, 
+	uint32_t x, 
+	uint32_t y 
+);
 
 
 

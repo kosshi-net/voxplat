@@ -160,7 +160,8 @@ int ctx_input_break_block()
 {
 	//return ( glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT)== GLFW_PRESS );
 	if( break_event ) {
-		break_event = 0;
+		if( glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) != GLFW_PRESS )
+			break_event = 0;
 		return 1;
 	}
 	return 0;

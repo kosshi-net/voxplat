@@ -40,6 +40,7 @@ void chunkset_gen_tree( struct ChunkSet* set, uint32_t x, uint32_t z ){
 		memcpy( ws3, ws2, 3*sizeof(uint32_t));
 		ws3[0] -= x; ws3[1] -= y; ws3[2] -= z;
 		chunkset_edit_write( set, ws3, 4 );
+		shadow_place_update(set, ws3);
 	}
 	//memcpy( ws2, ws, 3*sizeof(uint32_t));
 	ws2[0] -= 1; ws2[1] += 4; ws2[2] -= 1;
@@ -51,6 +52,7 @@ void chunkset_gen_tree( struct ChunkSet* set, uint32_t x, uint32_t z ){
 		memcpy( ws3, ws2, 3*sizeof(uint32_t));
 		ws3[0] -= x; ws3[1] -= y; ws3[2] -= z;
 		chunkset_edit_write( set, ws3, 4 );
+		shadow_place_update(set, ws3);
 	}
 	//memcpy( ws2, ws, 3*sizeof(uint32_t));
 	ws2[0] -= 1; ws2[1] += 4; ws2[2] -= 1;
@@ -62,6 +64,7 @@ void chunkset_gen_tree( struct ChunkSet* set, uint32_t x, uint32_t z ){
 		memcpy( ws3, ws2, 3*sizeof(uint32_t));
 		ws3[0] -= x; ws3[1] -= y; ws3[2] -= z;
 		chunkset_edit_write( set, ws3, 4 );
+		shadow_place_update(set, ws3);
 	}
 
 
@@ -71,8 +74,10 @@ void chunkset_gen_tree( struct ChunkSet* set, uint32_t x, uint32_t z ){
 		ws[1]++;
 	}
 	chunkset_edit_write( set, ws, 4 );
+	shadow_place_update(set, ws);
 	ws[1]++;
 	chunkset_edit_write( set, ws, 4 );
+	shadow_place_update(set, ws);
 
 }
 
@@ -80,8 +85,8 @@ void chunkset_gen_trees( struct ChunkSet* set){
 
 	logf_info("Generating trees ..");
 	event_fire( EVENT_LOCKING_PROGRESS, NULL );
-	for( int x = 64; x < set->max[0]*set->root - 64; x+=8 )
-	for( int z = 64; z < set->max[2]*set->root - 64; z+=8 ){
+	for( int x = 64; x < set->max[0]*set->root - 64; x+=10 )
+	for( int z = 64; z < set->max[2]*set->root - 64; z+=10 ){
 
 		float hz = 0.5;
 		if( noise_simplex( x*hz, 0, 	z*hz ) > noise_randf() ) continue;
@@ -170,7 +175,7 @@ void chunkset_gen( struct ChunkSet* set )
 				(1-fabs(noise_simplex( x*hz, 0, z*hz))) *
 				(e0+e1+e2);
 
-			float h = ((pow((e0+e1+e2+e3)*a0, 1.2) )*100.0f);
+			float h = ((pow((e0+e1+e2+e3)*a0, 1.2) )*130.0f);
 
 			hz = 5.0;
 			h += 3 * noise_simplex( x*hz, 0, z*hz );
@@ -191,25 +196,24 @@ void chunkset_gen( struct ChunkSet* set )
 				int32_t depth = ws[1]-h;
 
 				if( depth < 0 ){
+					shadow_place_update(set, ws);
 					c->voxels[i] = 21;
-				}
-				if( depth == -1 ){
-					//hz = 0.05;
-					if( h < 3 )
-						c->voxels[i] = 23;
-					else if( 120+noise_simplex( x*1.0f, 0, z*1.0f )*20 > h )
-						c->voxels[i] = 8;
-					else{
-						hz = 2.0f;
-						if( 190+noise_u_simplex_f3( x*hz, 0, z*hz )*200 > h )
-							c->voxels[i] = 42;
-						else
-							c->voxels[i] = 63;
+					if( depth == -1 ){
+						//hz = 0.05;
+						if( h < 3 )
+							c->voxels[i] = 23;// 010111
+						else if( 120+noise_simplex( x*1.0f, 0, z*1.0f )*20 > h )
+							c->voxels[i] = 8;
+						else{
+							hz = 2.0f;
+							if( 190+noise_u_simplex_f3( x*hz, 0, z*hz )*200 > h )
+								c->voxels[i] = 42; // 101010
+							else
+								c->voxels[i] = 63;
 
+						}
 					}
-						//c->voxels[i] = noise_u_simplex_f3( x*hz,ws[1]*hz,z*hz )*63;
-					//c->voxels[i] = 63;
-				};
+				}
 				//c->voxels[i] = depth;
 			}
 

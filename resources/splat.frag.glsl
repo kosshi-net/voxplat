@@ -14,6 +14,8 @@ uniform float u_lod;
 
 out vec4 out_Color;
 
+varying float ndotl;
+
 // ro = ray origin
 // rd = ray direction
 // minV = aabb min
@@ -58,7 +60,8 @@ vec3 ss2wsVec(float x, float y){
 
 void main(void) {
 
-	vec3 light = normalize( vec3(0.0, -1.0, 0.0)  );
+	//vec3 light = normalize( vec3(0.0, -1.0, 0.0)  );
+	vec3 light = normalize( vec3(1.0, 1.0, 1.0)  );
 
 	vec3 vxl = vVert.xyz;
 
@@ -120,9 +123,21 @@ void main(void) {
 
 	//vec3 r = reflect( ray, normal );
 	vec3 r = -normal;
-	vec3 color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
-	//vec3 color =  vColor * ( dot( r, light) / 2.0 + 0.5 );
-	//vec3 color = vColor;
+	//vec3 color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
+	vec3 color;
+
+	float d = (dot( r, light ));
+
+	if(ndotl == 1.0f){
+		//color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
+		if( d < 0 )
+			color = vColor * 0.7 ;
+		else
+			color = vColor;
+	}
+	else{
+		color = vColor;
+	}
 	//vec3 color = vColor;
 	//color*=texture(uTex, uv).xyz;
 	//vec3 color  = vec3( uv.x, 0.0, uv.y );
@@ -133,7 +148,7 @@ void main(void) {
 
 	gl_FragDepth = result.x/u_far;
 
-	float fog = pow(gl_FragDepth,0.5);
+	float fog = pow(gl_FragDepth,0.7);
 	//float fog = 0;
 
 	out_Color = vec4( mix( 

@@ -14,6 +14,8 @@ out vec3 vColor;
 
 uniform float u_lod;
 
+varying float ndotl;
+
 float rand(vec2 co)
 {
     return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
@@ -24,13 +26,18 @@ vec3 unpack6bit(int c){
 	color.b = c & 3;
 	color.g = c >> 2 & 3;
 	color.r = c >> 4 & 3;
-	return color / 3;
+	float shadow = 1 - (c >> 6 & 3);
+	if( shadow == 1.0 ) 
+		ndotl = 1.0;
+	else
+		ndotl = 0.0;
+	return color / 3 * max(0.7, shadow);
 }
 
 void main(void) {
 
 
-	vVert = u_view_translation * (aVertex - vec4(0.5,0.5,0.5,0.0)*u_lod);
+	vVert = u_view_translation * (aVertex + vec4(0.5,0.5,0.5,0.0)*u_lod);
 
 	gl_Position = (u_projection * u_view_rotation) * ( vVert );
 
@@ -43,14 +50,14 @@ void main(void) {
 	// Increasing this increases overdraw nearing edges
 	reduce += 1.0;
 
-	float size = ( uViewport.y*0.50 ) / gl_Position.z * max(reduce, 1.0);
+	float size = ( uViewport.y*0.70 ) / gl_Position.z * max(reduce, 1.0);
 
 	size*=u_lod;
 
 
 	gl_PointSize = size;
 
-	vColor = unpack6bit(aColor);
+	vColor = unpack6bit(aColor); // * (0.8+( rand(aVertex.xz * rand(aVertex.yz)) )*0.2);
 
 }
 

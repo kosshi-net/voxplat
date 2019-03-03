@@ -5,6 +5,7 @@
 #include "gfx/text.h"
 #include "gfx/rect.h"
 #include "gfx/aabb.h"
+#include "gfx/sky.h"
 
 #include "event.h"
 
@@ -28,6 +29,7 @@ int gfx_init() {
 	if ( gfx_rect_init()	) return 1;
 	if ( gfx_shell_init()	) return 1;
 	if ( gfx_aabb_init()	) return 1;
+	if ( gfx_sky_init()	) return 1;
 
 	log_info( "Init ok" );
 	return 0;

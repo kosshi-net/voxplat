@@ -24,6 +24,7 @@
 #include "gfx/vsplat.h"
 #include "gfx/vmesh.h"
 #include "gfx/camera.h"
+#include "gfx/sky.h"
 
 #include "mem.h"
 #include "res.h"
@@ -121,6 +122,36 @@ void command_memory_debug( int argc, char **argv ){
 	mem_log_debug();
 }
 
+void command_export( int argc, char **argv ){
+	
+
+	FILE *fptr;
+	fptr = fopen("default.bin","wb");
+
+	char magic = (char)137;
+
+	//char *mid = (char*)0xDEAD;
+
+	fwrite( &magic, 1, 1, fptr );
+	fwrite( "VOXPLAT", 7, 1, fptr );
+	fwrite( &set->root_bitw, 1, 1, fptr );
+	fwrite( set->max_bitw, 3, 1, fptr );
+
+	for (uint32_t i = 0; i < set->count; ++i){
+		struct ChunkMD *c = &set->chunks[i];
+
+		uint32_t j = 0;
+		for(; c->rle[j]; j+=2);
+		j+=2;
+		fwrite( c->rle, j, 1, fptr );
+		//fwrite( "\0\0", 4, 1, fptr );
+	}
+
+	fwrite( set->shadow_map, set->shadow_map_length, 1, fptr );
+
+	fclose(fptr);
+}
+
 
 void command_chunkset_edit( int argc, char **argv ){
 	if( argc == 6 && strcmp(argv[1], "set") == 0 ){
@@ -140,43 +171,30 @@ void command_chunkset_edit( int argc, char **argv ){
 
 int game_init(){
 
-	shell_bind_command("sensitivity", 	&command_sensitivity);
-	shell_bind_command("speed", 		&command_speed);
-	shell_bind_command("chunkset_edit", &command_chunkset_edit);
-	shell_bind_command("show_chunks", 	&command_show_chunks);
-	shell_bind_command("debug_mark_near", 	&command_debug_mark_near);
-	shell_bind_command("held_voxel", 	&command_held_voxel);
-
-	shell_bind_command("memory_debug", 	&command_memory_debug);
+	shell_bind_command("sensitivity", 		&command_sensitivity);
+	shell_bind_command("speed", 			&command_speed);
+	shell_bind_command("chunkset_edit", 	&command_chunkset_edit);
+	shell_bind_command("toggle_chunk_aabb",	&command_show_chunks);
+	shell_bind_command("toggle_lod",		&command_debug_mark_near);
+	shell_bind_command("color",		 		&command_held_voxel);
+	shell_bind_command("memory_debug", 		&command_memory_debug);
+	shell_bind_command("export", 			&command_export);
 
 	gfx_vsplat_init();
 	gfx_vmesh_init();
 
-	// Create world and geometry
-	// 2 4
-	// 3 8
-	// 4 16
-	// 5 32
-	// 6 64
-	// 7 128
-
 	set = chunkset_create( 
-		7, (uint8_t[]){5,1,5}
-		//6, (uint8_t[]){7,0,8}
-		//7, (uint8_t[]){0,0,0}
-		//6, (uint8_t[]){6,3,6}
-		//6, (uint8_t[]){6,3,6}
-		//6, (uint8_t[]){5,3,5}
-		//5, (uint8_t[]){6,4,6}
+		6, (uint8_t[]){5,2,5}
 	);
 	
+	//chunkset_clear_import( set );
 	chunkset_clear( set );
+	chunkset_create_shadow_map( set );
 	chunkset_gen( set );
 	
 	//cam = *gfx_camera_create();
 	cam.location[1] = 64;
-	cam.fov =  110.0f;
-	//cam.far = 1024*2;
+	cam.fov =  90.0f;
 	cam.far = 1024*2;
 
 	renderer = (char*)glGetString(GL_RENDERER);
@@ -216,9 +234,9 @@ void game_tick(){
 	double delta = now - last_time;
 
 	fps_counter++;
-	if( now > last_fps_update+1 ){
+	if( now > last_fps_update+0.25 ){
 		last_fps_update = now;
-		fps = fps_counter;
+		fps = fps_counter*4;
 		fps_counter = 0;
 	}
 
@@ -229,8 +247,8 @@ void game_tick(){
 
 	double cur_x, cur_y;
 	ctx_cursor_movement( &cur_x, &cur_y  );
-	cam.yaw 	+= cur_x*sensitivity;
-	cam.pitch 	+= cur_y*sensitivity;
+	cam.yaw 	-= cur_x*sensitivity;
+	cam.pitch 	-= cur_y*sensitivity;
 	
 	if( cam.pitch > 90   ) cam.pitch=90;
 	if( cam.pitch < -90  ) cam.pitch=-90;
@@ -247,20 +265,20 @@ void game_tick(){
 	};
 
 	float right[] = {
-		sinf(yaw - 3.14/2), 
+		sinf(yaw + 3.14/2), 
 		0,
-		cosf(yaw - 3.14/2)
+		cosf(yaw + 3.14/2)
 	};
 		
 	int vx = 0, vy = 0;	
 	ctx_movement_vec( &vx, &vy );
 	
 	for( int i = 0; i < 3; i++  )
-		cam.location[i] += ( dir[i]*vx + right[i]*vy )*s;
+		cam.location[i] -= ( dir[i]*vx + right[i]*vy )*s;
 
 
 	//glm_perspective( cam.fov, width/(float)height, 0.1, cam.far, cam.projection );
-	glm_perspective( glm_rad(-cam.fov), width/(float)height, 0.1, cam.far, cam.projection );
+	glm_perspective( glm_rad(cam.fov), width/(float)height, 0.1, cam.far, cam.projection );
 
 	glm_mat4_inv( cam.projection, cam.inverse_projection  );
 
@@ -268,7 +286,11 @@ void game_tick(){
 	glm_mat4_identity(cam.view_rotation);
 	glm_mat4_identity(cam.view_translation);
 
-	glm_translate(cam.view_translation, cam.location);
+	float location_inverse[3];
+	for (int i = 0; i < 3; ++i)
+		location_inverse[i] = -cam.location[i];
+
+	glm_translate(cam.view_translation, location_inverse);
 
 	glm_rotate( cam.view_rotation, glm_rad(cam.pitch), (vec3){1, 0, 0} );
 	glm_rotate( cam.view_rotation, glm_rad(cam.yaw)  , (vec3){0, 1, 0} );
@@ -311,16 +333,17 @@ void game_tick(){
 		float cwp[3]; // Chunk world position
 		float here[3];
 		for (int i = 0; i < 3; ++i){
-			cwp[i] = -(c->offset[i] * set->root + set->root/2.0f);
-			here[i] = -cam.location[i];
+			cwp[i] = (c->offset[i] * set->root + set->root/2.0f);
+			here[i] = cam.location[i];
 		}
 		float distance = glm_vec_distance( here, cwp );
 		if( debug_mark_near ){
 			c->lod = (distance > 200.0);
 			if((distance > 1024.0)) c->lod = 2;
-			if((distance > 2048.0)) c->lod = 3;
-			if((distance > 4096.0)) c->lod = 4;
-			if((distance > cam.far)) c->lod = -1;
+			//if((distance > 1024.0)) c->lod = 3;
+			//if((distance > 2048.0)) c->lod = 3;
+			//if((distance > 4096.0)) c->lod = 4;
+			//if((distance > cam.far)) c->lod = -1;
 		}
 		
 
@@ -344,6 +367,8 @@ void game_tick(){
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS); 
+
+	gfx_sky_draw(&cam);
 
 	gfx_vmesh_draw(
 		&cam,
@@ -418,7 +443,7 @@ void game_tick(){
 			ray
 		);	
 
-		glm_vec_inv(ray);
+		//glm_vec_inv(ray);
 
 		uint32_t hitcoord[3] = {0};
 		 int8_t normal[3] = {0};
@@ -440,14 +465,17 @@ void game_tick(){
 					_a[i] = (float)u[i];
 					_b[i] = (float)hitcoord[i];
 				}
-				if (glm_vec_distance(_a, _b) < 10)
+				if (glm_vec_distance(_a, _b) < 10){
 					chunkset_edit_write(set, u, 0);
+					shadow_break_update(set, u);
+				}
 			}
 		}
 		else if( v2>0 && _place  ){
 			for( int i = 0; i < 3; i++  )
 				hitcoord[i]+=normal[i];
 			chunkset_edit_write(set, hitcoord, held_voxel);
+			shadow_place_update(set, hitcoord);
 		}
 	}
 
@@ -500,13 +528,15 @@ void game_tick(){
 
 
 
+	ctx_swap_buffers();
 	// Frame limit
 	capped = ' ';
-	if( delta*1000 < 3 ) {
-		usleep( (3-(delta*1000)) * 2000.0 );
+	double worked = ctx_time();
+	if( worked-now < 0.0032 && fps > 280) {
+		//usleep( 3*1000.0 );
+		while( ctx_time() < now+0.0032 ) usleep(50);
 		capped = '*';
 	}
-	ctx_swap_buffers();
 
 	last_time = now;
 }

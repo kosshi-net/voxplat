@@ -57,7 +57,7 @@ const unsigned short luti[12] = {
 	1, 0, 2
 };
 
-float* work_buf[128] = {NULL};
+float *work_buf[128] = {NULL};
 
 
 // TODO: make these better :D
@@ -233,6 +233,9 @@ void chunk_make_mesh(
 			uint16_t AIR[3];
 			memcpy( AIR, AC, sizeof(AIR) );
 			AIR[i] += (B==0);
+			uint16_t BLOCK[3];
+			memcpy( BLOCK, AC, sizeof(AIR) );
+			BLOCK[i] += (A==0);
 
 			// AO START
 
@@ -246,41 +249,47 @@ void chunk_make_mesh(
 
 			uint8_t vertex_ao[4];
 			if( i == 0 ){
-				vertex_ao[0] = aon[0]+aon[1]+aoc[0];
-				vertex_ao[3] = aon[1]+aon[2]+aoc[1];
-				vertex_ao[2] = aon[2]+aon[3]+aoc[2];
-				vertex_ao[1] = aon[3]+aon[0]+aoc[3];
+				vertex_ao[0] = (aon[0]+aon[1])|aoc[0];
+				vertex_ao[3] = (aon[1]+aon[2])|aoc[1];
+				vertex_ao[2] = (aon[2]+aon[3])|aoc[2];
+				vertex_ao[1] = (aon[3]+aon[0])|aoc[3];
 			} else if( i == 1 ) { 
-				vertex_ao[0] = aon[0]+aon[1]+aoc[0];
-				vertex_ao[1] = aon[1]+aon[2]+aoc[1];
-				vertex_ao[2] = aon[2]+aon[3]+aoc[2];
-				vertex_ao[3] = aon[3]+aon[0]+aoc[3];
+				vertex_ao[0] = (aon[0]+aon[1])|aoc[0];
+				vertex_ao[1] = (aon[1]+aon[2])|aoc[1];
+				vertex_ao[2] = (aon[2]+aon[3])|aoc[2];
+				vertex_ao[3] = (aon[3]+aon[0])|aoc[3];
 			} else {
-				vertex_ao[1] = aon[0]+aon[1]+aoc[0];
-				vertex_ao[0] = aon[1]+aon[2]+aoc[1];
-				vertex_ao[3] = aon[2]+aon[3]+aoc[2];
-				vertex_ao[2] = aon[3]+aon[0]+aoc[3];
+				vertex_ao[1] = (aon[0]+aon[1])|aoc[0];
+				vertex_ao[0] = (aon[1]+aon[2])|aoc[1];
+				vertex_ao[3] = (aon[2]+aon[3])|aoc[2];
+				vertex_ao[2] = (aon[3]+aon[0])|aoc[3];
 			}
 
 			uint8_t invert=0;
 			if( vertex_ao[0]+vertex_ao[2] < vertex_ao[1]+vertex_ao[3] ) 
 				invert = 6;
 
-			// AO DONE
+
+			uint32_t ws[3];
+			for (int i = 0; i < 3; ++i)
+				ws[i] = (c.offset[i] << set.root_bitw) + BLOCK[i];
+
+			uint16_t SHADOW = sample_shadow(setp, ws)<<15;
+
+			ws[i] -= (A==0);
 
 			int face = i;
 			for( int vertex = 0; vertex < 4; vertex++ ){
 				for( int item = 0; item < 3; item++  ){
-					geometry[v++] = -(
-						(c.offset[item] << set.root_bitw) 
-						+ AC[item] 
+					geometry[v++] = ( ws[item]
 						+ lutv[ face*12 + vertex*3 + item ]
 					);
 				}
 				geometry[v++] = 
 					(A|B) | 
 					( vertex_ao[vertex]  << 6) |
-					((face + (3*(A==0))) << 8)	// Normal
+					((face + (3*(A==0))) << 8) |	// Normal
+					SHADOW
 				; 
 			}
 			for( int vertex = 0; vertex < 6; vertex++ ){
@@ -299,7 +308,149 @@ void chunk_make_mesh(
 
 
 
+void chunk_make_mask(
+	struct ChunkSet *setp,
+	struct ChunkMD *cp,
+	Voxel *mask
+){
+	// Dereferense the structures for 20% speedup
+	struct ChunkSet set = *setp;		
+	struct ChunkMD c = *cp;
+
+	uint16_t cvec[3];
+	memcpy( cvec, c.offset, sizeof(cvec) ); 
+
+	struct ChunkMD nc[3];
+
+	for( int i = 0; i < 3; i++ ) {
+		cvec[i]++;
+		if( cvec[i]+1 > set.max[i]  )
+			nc[i] = *set.null_chunk;
+		else{
+			struct ChunkMD *_c = &set.chunks[ flatten3( cvec, set.max_bitw )];
+			chunk_touch_ro( _c );
+			nc[i] = *_c;
+		}
+		cvec[i]--;
+	}
+
+	uint16_t r = set.root-1;
+	uint16_t AC[3];
+	uint32_t Ai = 0;
+	for( AC[2] = 0; AC[2] < set.root; AC[2]++ )
+	for( AC[1] = 0; AC[1] < set.root; AC[1]++ )
+	for( AC[0] = 0; AC[0] < set.root; AC[0]++ )
+	{
+		Voxel A = c.voxels[Ai];
+		uint32_t shift = 0;
+		for( int i = 0; i < 3; i++ ){
+			Voxel B;
+			if( AC[i]+1 == set.root )
+				B = nc[i].voxels[ Ai - (r << shift) ];
+			else
+				B = c.voxels[ Ai + (1 << shift) ];
+
+			shift += set.root_bitw;
+
+			if ( !A == !B  ) continue;
+
+			// Face visible, store result
+			uint16_t MC[3];
+			memcpy( MC, AC, sizeof(MC) );
+			MC[i] += (A==0);
+			uint32_t Mi = flatten1( MC, set.root_bitw+1 );
+			mask[Mi] = A|B;
+		}
+		Ai++;
+	}
+
+	return;
+}
+
+
+
+void chunk_mask_downsample(
+	struct ChunkSet *setp,
+	int8_t level,
+	Voxel *mask,
+	Voxel *work
+){
+	struct ChunkSet set = *setp;		
+
+	//uint16_t r = (set.root<<level) + 1;
+	uint16_t r = (set.root) + 1;
+	uint16_t AC[3];
+	
+	// Loop thru the mask
+	for( AC[2] = 0; AC[2] < r; AC[2]++ )
+	for( AC[1] = 0; AC[1] < r; AC[1]++ )
+	for( AC[0] = 0; AC[0] < r; AC[0]++ )
+	{
+		uint32_t Mi = flatten1( AC, set.root_bitw+1 );
+		if( mask[Mi] == 0 ) continue;
+
+		uint16_t MC[3];
+		memcpy( MC, AC, sizeof(MC) );
+		for (int i = 0; i < 3; ++i)
+			MC[i]>>=level;
+
+		uint32_t Wi = flatten1( MC, set.root_bitw+1 );
+		work[ Wi ] = mask[ Mi ];
+	}
+
+	return;
+}
+
+
+
 void chunk_make_splatlist(
+	struct ChunkSet *setp,
+	struct ChunkMD *cp,
+	uint8_t level,
+	Voxel *mask,
+	int16_t *geometry,
+	uint32_t*geometry_items
+){
+	// Dereferense the structures for 20% speedup
+	struct ChunkSet set = *setp;		
+	struct ChunkMD c = *cp;
+
+	//uint8_t lod = c.lod-1;
+	
+	uint16_t AC[3];
+
+	uint32_t v = *geometry_items;
+	// Loop thru the mask
+	for( AC[2] = 0; AC[2] < set.root+1; AC[2]++ )
+	for( AC[1] = 0; AC[1] < set.root+1; AC[1]++ )
+	for( AC[0] = 0; AC[0] < set.root+1; AC[0]++ )
+	{
+		uint32_t Mi = flatten1( AC, set.root_bitw+1 );
+		if( mask[Mi] == 0 ) continue;
+
+		uint32_t ws[3];
+		for( int j = 0; j < 3; j++  ){
+			ws[j] = (c.offset[j] << set.root_bitw) + (AC[j]<<level);
+			geometry[v++] = ( ws[j] );
+		}
+		if(level){
+			ws[0]+= 1<<(level);
+			ws[1]+= 1<<(level);
+			ws[2]+= 1<<(level);
+		}
+		geometry[v++] = mask[Mi] | ((sample_shadow( setp, ws )<<6));
+	}
+	*geometry_items += v;
+
+	return;
+}
+
+
+
+
+
+
+void chunk_make_splatlist2(
 	struct ChunkSet *setp,
 	struct ChunkMD *cp,
 	int16_t *geometry,
@@ -372,7 +523,7 @@ void chunk_make_splatlist(
 		if( mask[Mi] == 0 ) continue;
 
 		for( int j = 0; j < 3; j++  )
-			geometry[v++] = -((c.offset[j] << set.root_bitw) + (AC[j]<<lod));
+			geometry[v++] = ((c.offset[j] << set.root_bitw) + (AC[j]<<lod));
 
 		geometry[v++] = mask[Mi];
 		mask[Mi] = 0;

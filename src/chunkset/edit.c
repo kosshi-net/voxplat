@@ -21,12 +21,13 @@ Voxel chunkset_edit_read(
 	 ) return 0;
 
 	uint32_t ci = flatten3( chunk_vec, set->max_bitw );
-	if( ci > set->count ) return 0;
+	//if( ci > set->count ) return 0;
 	struct ChunkMD *c = &set->chunks[ ci ];
 
-	chunk_open_ro(c);
+	//chunk_open_ro(c);
+	chunk_touch_ro(c);
 	Voxel v = c->voxels[ flatten1( voxel_vec, set->root_bitw ) ];
-	chunk_close_ro(c);
+	//chunk_close_ro(c);
 	return v;
 }
 
