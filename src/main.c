@@ -67,6 +67,7 @@ void locking_progress_callback(void* ptr)
 	pthread_mutex_unlock( &mutex_prog  );
 }
 
+
 void check_glerr(void){
 	GLenum err;
 	if ((err = glGetError()) != GL_NO_ERROR){
@@ -116,6 +117,7 @@ int main(void)
 
 	game_tick();
 	ctx_poll_events();
+
 
     while ( !ctx_should_close() )
     {	

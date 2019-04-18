@@ -11,7 +11,7 @@ out vec3 vColor;
 out vec3 vNormal;
 out float vDepth;
 
-varying float ndotl;
+out float ndotl;
 
 vec3 unpack6bit_float(float c){
 	vec3 color;
@@ -35,9 +35,10 @@ float unpack_ao( int c ){
 }
 
 float unpack_shadow( int c ){
-	float darken = c >> 15 & 1;
+	//float darken = c >> 15 & 1;
 	//return (max(darken,0.2));
-	return max(1-darken, 0.7);
+	//return max(1-darken, 0.7);
+	return float(c >> 15 & 1);
 }
 
 
@@ -51,7 +52,7 @@ vec3 unpack_normal(int c){
 		vec3( 0, 0,-1 )
 	);
 
-	int index = c>>8 & 7;
+	int index = (c>>8) & 7;
 
 	return lut[index];
 }
@@ -68,15 +69,12 @@ void main(void) {
 	vDepth = d/u_far;
 	float aow = 1.0-min(d/180.0,1.0);
 
-	if(unpack_shadow(aColor) == 1.0)
-		ndotl = 1.0;
-	else
-		ndotl = 0.0;
+	ndotl = unpack_shadow(aColor);
 
 	vNormal = unpack_normal(aColor);
 	vColor = 
 		unpack_color(aColor) *
-		unpack_shadow(aColor) *
+		max( 1.0 - unpack_shadow(aColor), 0.7) *
 		(1.0-unpack_ao(aColor)*aow)
 		;
 	//vColor = unpack_normal(aColor);

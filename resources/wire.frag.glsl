@@ -1,13 +1,15 @@
-#version 120
+#version 330
 
 uniform vec4 uColor;
 
-varying float vDepth;
-varying vec4 vPos;
+in float vDepth;
+in vec4 vPos;
 
 uniform float u_far;
 
+out vec4 out_Color;
+
 void main(void) {
-	gl_FragColor = uColor;
+	out_Color = uColor;
 	gl_FragDepth = length(vPos)/u_far;
 }

@@ -69,34 +69,34 @@ void gfx_aabb_push( float *min, float *max )
 // min and max are float[3] in -1 to +1 range
 	float _temp[] = {
 		// BOTTOM
-		-min[0], -min[1], -min[2],
-		-min[0], -min[1], -max[2],
-		-min[0], -min[1], -max[2],
-		-max[0], -min[1], -max[2],
-		-max[0], -min[1], -max[2],
-		-max[0], -min[1], -min[2],
-		-max[0], -min[1], -min[2],
-		-min[0], -min[1], -min[2],
+		min[0], min[1], min[2],
+		min[0], min[1], max[2],
+		min[0], min[1], max[2],
+		max[0], min[1], max[2],
+		max[0], min[1], max[2],
+		max[0], min[1], min[2],
+		max[0], min[1], min[2],
+		min[0], min[1], min[2],
 
 		// TOP
-		-min[0], -max[1], -min[2],
-		-min[0], -max[1], -max[2],
-		-min[0], -max[1], -max[2],
-		-max[0], -max[1], -max[2],
-		-max[0], -max[1], -max[2],
-		-max[0], -max[1], -min[2],
-		-max[0], -max[1], -min[2],
-		-min[0], -max[1], -min[2],
+		min[0], max[1], min[2],
+		min[0], max[1], max[2],
+		min[0], max[1], max[2],
+		max[0], max[1], max[2],
+		max[0], max[1], max[2],
+		max[0], max[1], min[2],
+		max[0], max[1], min[2],
+		min[0], max[1], min[2],
 
 		// CONNECT
-		-min[0], -min[1], -min[2],
-		-min[0], -max[1], -min[2],
-		-min[0], -min[1], -max[2],
-		-min[0], -max[1], -max[2],
-		-max[0], -min[1], -min[2],
-		-max[0], -max[1], -min[2],
-		-max[0], -min[1], -max[2],
-		-max[0], -max[1], -max[2],
+		min[0], min[1], min[2],
+		min[0], max[1], min[2],
+		min[0], min[1], max[2],
+		min[0], max[1], max[2],
+		max[0], min[1], min[2],
+		max[0], max[1], min[2],
+		max[0], min[1], max[2],
+		max[0], max[1], max[2],
 	};
 	for( int i = 0; i < sizeof(_temp)/sizeof(float); i++ ){
 		aabb_local_geom[aabb_local_geom_len++] = _temp[i];
@@ -143,7 +143,7 @@ void gfx_aabb_draw( struct Camera *cam, float *color )
 
 	glUniform1f(
 		aabb_shader_u_far,
-		cam->far
+		cam->far_plane
 	);
 
 	glUniformMatrix4fv(

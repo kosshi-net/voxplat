@@ -4,7 +4,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-
+#include <pthread.h>
 
 
 typedef uint8_t Voxel;
@@ -39,15 +39,14 @@ struct ChunkMD {
 	pthread_mutex_t mutex;
 
 	uint32_t last_access;	// ctx_time()
-	uint32_t readers;		// How many threads are reading the chunk
+	uint32_t readers;		// num threads are reading the chunk
 	uint32_t count;			// Count of voxels
 	uint16_t offset[3];		// In chunks
-	Voxel  *voxels;		// Pointer to voxels
+	Voxel  *voxels;			
 	Voxel  *rle;
 	
 	int8_t		lod;
-	uint8_t     dirty;				// Bool for Geometry outdated
-
+	uint8_t     dirty;				// Bool for geometry outdated
 
 	void	   *gl_vbo_local;		// Temporary store for vbo data
 	uint8_t		gl_vbo_local_lod;
@@ -57,6 +56,7 @@ struct ChunkMD {
 	void	   *gl_ibo_local;
 	uint32_t	gl_ibo_local_items;
 
+	uint32_t	gl_vao;
 	uint32_t	gl_vbo;
 	uint8_t		gl_vbo_lod;
 	uint32_t	gl_vbo_segments[MAX_LOD_LEVEL];

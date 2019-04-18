@@ -201,7 +201,7 @@ uint8_t sample_shadow(
 			set,
 			ws[0]-ws[1],
 			ws[2]-ws[1]
-		) & 16777215 ] < ws[1]+1)
+		) & (set->shadow_map_length-1) ] < ws[1]+1)
 		;
 }
 
@@ -215,7 +215,7 @@ uint8_t sample_shadow_c(
 			set,
 			(ws[0] + (c->offset[0]<<set->root_bitw))-ws[1],
 			(ws[2] + (c->offset[2]<<set->root_bitw))-ws[1]
-		) & 16777215 ] < ws[1]+1)
+		) & (set->shadow_map_length-1) ] < ws[1]+1)
 		;
 }
 

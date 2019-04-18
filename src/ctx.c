@@ -39,19 +39,23 @@ int ctx_init()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
 	//glfwWindowHint(GLFW_SAMPLES, MSAA_SAMPLES);
 	//
 	glfwWindowHint( GLFW_DOUBLEBUFFER, GL_FALSE );
 
+
     window = glfwCreateWindow(640, 480, PROJECT_NAME, NULL, NULL);
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSwapInterval(0);
 
     if (!window) {
         glfwTerminate();
         return 2;
     }
+
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     glfwMakeContextCurrent(window);
 
@@ -83,7 +87,8 @@ GLFWwindow* ctx_get_window() {
 }
 
 void ctx_swap_buffers() {
-	glfwSwapBuffers(window);
+	//glfwSwapBuffers(window);
+	glFlush();
 }
 
 void ctx_poll_events() {

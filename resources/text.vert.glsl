@@ -1,7 +1,7 @@
-#version 120
+#version 330
 
-attribute vec4 aCoord;
-varying vec2 texcoord;
+in vec4 aCoord;
+out vec2 texcoord;
 
 void main(void) {
   gl_Position = vec4(aCoord.xy, 0.0f, 1.0f);

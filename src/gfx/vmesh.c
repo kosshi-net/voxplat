@@ -137,7 +137,7 @@ void gfx_vmesh_draw(
 
 	glUniform1f(
 		vmesh_shader_u_far,
-		cam->far
+		cam->far_plane
 	);
 
 	glUniform2f(
@@ -165,13 +165,15 @@ void gfx_vmesh_draw(
 		if( c->gl_vbo == 0 ) continue;
 		if(c->gl_vbo_lod > 0) continue;
 
+		glBindVertexArray(c->gl_vao);
 		//c->gl_vbo_preferred_type = gfx_fcull(near_planes, cwp, set->root*0.75);
 		//if(c->gl_vbo_preferred_type != c->gl_vbo_type) continue;
 		// RENDER
+	
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c->gl_ibo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, c->gl_vbo);
-
+/*
 		glVertexAttribPointer(
 			vmesh_shader_aVertex, 3, GL_SHORT, GL_FALSE, 
 			4*sizeof(int16_t),
@@ -183,7 +185,7 @@ void gfx_vmesh_draw(
 			4*sizeof(int16_t), 
 			(const void*) (3*sizeof(int16_t))
 		);
-
+*/
 
 		//glDrawArrays( GL_TRIANGLES, 0, c->gl_vbo_items/4);
 		
@@ -195,6 +197,7 @@ void gfx_vmesh_draw(
  		);
 		*item_count += c->gl_ibo_items;
 	}
+	glBindVertexArray(0);
 	
 
 	return;

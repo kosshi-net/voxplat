@@ -1,13 +1,13 @@
-#version 120
+#version 330
 
-attribute vec4 aVertex;
+in vec4 aVertex;
 
 uniform mat4 u_projection;
 uniform mat4 u_view_rotation;
 uniform mat4 u_view_translation;
 
-varying float vDepth;
-varying vec4 vPos;
+out float vDepth;
+out vec4 vPos;
 
 void main(void) {
 	vPos = u_view_translation*aVertex;

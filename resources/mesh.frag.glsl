@@ -11,7 +11,7 @@ in float vDepth;
 
 out vec4 out_Color;
 
-varying float ndotl;
+in float ndotl;
 
 void main(void) {
 	
@@ -22,11 +22,7 @@ void main(void) {
 	//vec3 r = reflect( ray, vNormal );
 
 	vec3 color;
-	if(ndotl == 1.0)
-		//color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
-		color = vColor * max( 0.7, float( dot(r, light)>0 ) );
-	else
-		color = vColor;
+	color = vColor * max( max(0.7, ndotl), sign( dot(r, light) ) );
 
 	gl_FragDepth = vDepth;
 

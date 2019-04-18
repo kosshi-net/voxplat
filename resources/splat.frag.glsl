@@ -14,7 +14,7 @@ uniform float u_lod;
 
 out vec4 out_Color;
 
-varying float ndotl;
+in float ndotl;
 
 // ro = ray origin
 // rd = ray direction
@@ -94,12 +94,12 @@ void main(void) {
 	vec3 hit = vxl - ray*result.x;
 	vec3 absHit = abs(hit); // Relative to voxel center
 	
-	float max = max( max( absHit.x, absHit.y), absHit.z  );
+	float max_dim = max( max( absHit.x, absHit.y), absHit.z  );
 
 	vec3 normal = vec3(
-		float(absHit.x == max), 
-		float(absHit.y == max), 
-		float(absHit.z == max) 
+		float(absHit.x == max_dim), 
+		float(absHit.y == max_dim), 
+		float(absHit.z == max_dim) 
 	)*sign(hit);
 
 	// UV
@@ -126,18 +126,9 @@ void main(void) {
 	//vec3 color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
 	vec3 color;
 
-	float d = (dot( r, light ));
+	color = vColor * max( max(0.7, ndotl), sign( dot(r, light) ) );
 
-	if(ndotl == 1.0f){
-		//color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
-		if( d < 0 )
-			color = vColor * 0.7 ;
-		else
-			color = vColor;
-	}
-	else{
-		color = vColor;
-	}
+	//color = vColor * ( 0.7 * float( d < 0 ));
 	//vec3 color = vColor;
 	//color*=texture(uTex, uv).xyz;
 	//vec3 color  = vec3( uv.x, 0.0, uv.y );

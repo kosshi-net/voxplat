@@ -193,9 +193,9 @@ int game_init(){
 	chunkset_gen( set );
 	
 	//cam = *gfx_camera_create();
-	cam.location[1] = 64;
+	cam.location[1] = 512;
 	cam.fov =  90.0f;
-	cam.far = 1024*2;
+	cam.far_plane = 1024*2;
 
 	renderer = (char*)glGetString(GL_RENDERER);
 
@@ -242,6 +242,7 @@ void game_tick(){
 
 	int width, height;
 	ctx_get_window_size( &width, &height  );
+	glViewport(0,0,width,height);
 	
 	// CAMERA POISITION AND STUFF
 
@@ -277,8 +278,8 @@ void game_tick(){
 		cam.location[i] -= ( dir[i]*vx + right[i]*vy )*s;
 
 
-	//glm_perspective( cam.fov, width/(float)height, 0.1, cam.far, cam.projection );
-	glm_perspective( glm_rad(cam.fov), width/(float)height, 0.1, cam.far, cam.projection );
+	//glm_perspective( cam.fov, width/(float)height, 0.1, cam.far_plane, cam.projection );
+	glm_perspective( glm_rad(cam.fov), width/(float)height, 0.1, cam.far_plane, cam.projection );
 
 	glm_mat4_inv( cam.projection, cam.inverse_projection  );
 
@@ -343,7 +344,7 @@ void game_tick(){
 			//if((distance > 1024.0)) c->lod = 3;
 			//if((distance > 2048.0)) c->lod = 3;
 			//if((distance > 4096.0)) c->lod = 4;
-			//if((distance > cam.far)) c->lod = -1;
+			//if((distance > cam.far_plane)) c->lod = -1;
 		}
 		
 
@@ -353,7 +354,7 @@ void game_tick(){
 		if( c->gl_vbo == 0 && c->gl_vbo_local == 0) continue;
 		if( c->gl_vbo_local_items == 0 ) continue;
 
-		if( distance > cam.far ) continue;
+		if( distance > cam.far_plane ) continue;
 		if( !gfx_fcull(cam.frustum_planes, cwp, set->root*0.85) ) continue;
 	//	if( c->gl_vbo_type )
 	//		chunk_near_draw_queue[chunk_near_draw_queue_count++] = c;
@@ -528,7 +529,8 @@ void game_tick(){
 
 
 
-	ctx_swap_buffers();
+	//ctx_swap_buffers();
+	glFlush();
 	// Frame limit
 	capped = ' ';
 	double worked = ctx_time();

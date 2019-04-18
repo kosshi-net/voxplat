@@ -18,7 +18,7 @@ struct Camera {
 	mat4 view_projection;
 
 	float fov;
-	float far;
+	float far_plane; // thanks microsoft, can't make it just far!
 
 	float location[3];
 	float yaw;

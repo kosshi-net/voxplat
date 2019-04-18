@@ -49,6 +49,7 @@ set( VERSION_MINOR 6 )
 
 	# GLFW
 	add_subdirectory	(${EXTERNAL}/glfw)
+	include_directories	(${EXTERNAL}/glfw/include) # windows wants this
 
 	# Freetype
 	add_subdirectory	(${EXTERNAL}/freetype)

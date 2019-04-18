@@ -14,7 +14,7 @@ out vec3 vColor;
 
 uniform float u_lod;
 
-varying float ndotl;
+out float ndotl;
 
 float rand(vec2 co)
 {
@@ -26,12 +26,9 @@ vec3 unpack6bit(int c){
 	color.b = c & 3;
 	color.g = c >> 2 & 3;
 	color.r = c >> 4 & 3;
-	float shadow = 1 - (c >> 6 & 3);
-	if( shadow == 1.0 ) 
-		ndotl = 1.0;
-	else
-		ndotl = 0.0;
-	return color / 3 * max(0.7, shadow);
+	float shadow = (c >> 6 & 3);
+	ndotl = shadow;
+	return color / 3 * max(0.7, 1.0-shadow);
 }
 
 void main(void) {
