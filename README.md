@@ -27,12 +27,6 @@ more refined version of the splatting part.
 This my first large C project, there is a lot of code and a lot of it is ugly.
 Development is mostly halted for now, but not abandoned. 
 
-Some pictures:
-![Pretty picture](https://i.imgur.com/ytUnnra.jpg)
-![Pretty picture](https://i.imgur.com/BmAt7jr.jpg)
-![Pretty picture](https://i.imgur.com/Gw4Vdu5.jpg)
-More pretty pictures and history at https://imgur.com/a/6zwciLy
-
 ## Engine features
 - OpenGL splatting capable of drawing large scenes at high framerates
 - Standard meshed rendering for nearby voxels for additional effects and speed
@@ -48,24 +42,37 @@ More pretty pictures and history at https://imgur.com/a/6zwciLy
 - Texture support, but its hard disabled for looks. I like solidcolor voxels :)
 - Builds on Linux and Windows (with MinGW)
 
+Some pictures:
+![Pretty picture](https://i.imgur.com/ytUnnra.jpg)
+![Pretty picture](https://i.imgur.com/BmAt7jr.jpg)
+![Pretty picture](https://i.imgur.com/Gw4Vdu5.jpg)
+More pretty pictures and history at https://imgur.com/a/6zwciLy
+
 ## Download
 (WIP)
 
 ## Building
-- Requires CMAKE
-- For now consult CMakeLists.txt for placement of libraries
+CMAKE Required.
+
+For libraries, either consult CMakeFiles.txt and download them all one by one,
+or you can download the following zip file with a copy of the libraries used 
+(make sure contents are in ``./ext/``).
+https://kosshi.net/u/voxplat-0-7-libraries.zip
 
 ### Linux
 ```
-./clear.sh
-./build.sh
+mkdir build; cd build;
+cmake ..;
+make;
 ```
+
+``clear.sh`` and ``build.sh`` are for development use.
 
 ### Windows (MINGW64)
 ```
-cd build
-cmake .. -G "MinGW Makefiles"
-mingw32-make
+mkdir build; cd build;
+cmake .. -G "MinGW Makefiles";
+mingw32-make;
 ```
 
 ## Libraries used
