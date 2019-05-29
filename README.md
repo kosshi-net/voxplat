@@ -16,7 +16,7 @@ voxels, so hybrid rendering is used: meshes for nearby, splatting farther away.
 
 I have not measured the vram usage, but I estimate it should be around 200-500MB.  
 System ram usage depends on the scene and how aggressive RLE is. For the default 
-4096x256x4096 scene and RLE settings, it does not seem to exceed 3GB. A quadcore
+2048x256x2048 scene and RLE settings, it does not seem to exceed 3GB. A quadcore
 CPU is needed to get the world meshed fully in a reasonable amount of time.
 
 ### Relevant
@@ -54,7 +54,7 @@ More pretty pictures and history at https://imgur.com/a/6zwciLy
 ## Building
 CMAKE Required.
 
-For libraries, either consult CMakeFiles.txt and download them all one by one,
+For libraries, either consult CMakeLists.txt and download them all one by one,
 or you can download the following zip file with a copy of the libraries used 
 (make sure contents are in ``./ext/``).
 https://kosshi.net/u/voxplat-0-7-libraries.zip

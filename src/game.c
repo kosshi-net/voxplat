@@ -39,13 +39,19 @@
 #include <string.h>
 #include <pthread.h>
 
+
+/*
+ * This file contains mostly temporary code that hasn't yet found its place in
+ * a dedicated module. Tread with care. Main game loop and init is done here.
+ */
+
+
 double last_time;
 int capped = ' ';
 
 double last_fps_update = 0;
 int fps_counter = 0;
 int fps = 0;
-
 
 struct Camera cam;
 
@@ -75,9 +81,29 @@ void *mesher_loop( void*ptr  ){
 	return NULL;
 }
 
-const char *renderer;
 
-float sensitivity = 0.05;
+void _ss2ws(
+	uint16_t x,
+	uint16_t max_x,
+	uint16_t y,
+	uint16_t max_y,
+	mat4 mat, // Inverse projection matrix
+	vec3 ray
+){
+	
+	float ray_clip[] = {
+		 (x/(float)max_x) * 2.0f - 1.0f,
+		-(y/(float)max_y) * 2.0f + 1.0f,
+		-1.0f, 1.0f
+	};
+	
+	glm_mat4_mulv3( mat, ray_clip, 1.0f, ray );
+	glm_vec_norm(ray);
+
+}
+
+
+float sensitivity = 0.15;
 void command_sensitivity( int argc, char **argv ){
 	if(argc == 2){
 		float temp = atof(argv[1]);
@@ -132,8 +158,6 @@ void command_memory_debug( int argc, char **argv ){
 }
 
 void command_export( int argc, char **argv ){
-	
-
 	FILE *fptr;
 	fptr = fopen("default.bin","wb");
 
@@ -161,7 +185,6 @@ void command_export( int argc, char **argv ){
 	fclose(fptr);
 }
 
-
 void command_chunkset_edit( int argc, char **argv ){
 	if( argc == 6 && strcmp(argv[1], "set") == 0 ){
 		uint32_t ws[3];
@@ -178,6 +201,8 @@ void command_chunkset_edit( int argc, char **argv ){
 	}
 }
 
+const char *renderer;
+
 int game_init(){
 
 	shell_bind_command("sensitivity", 		&command_sensitivity);
@@ -193,22 +218,32 @@ int game_init(){
 	gfx_vsplat_init();
 	gfx_vmesh_init();
 
+	/* 
+		Define the size of the world and chunks in power of twos.
+		5 = 32
+		6 = 64
+		7 = 128
+		etc
+
+		Good options:
+		6, (uint8_t[]){5,2,5} 	2048x256x2048 with 64 chunks
+		6, (uint8_t[]){6,2,6} 	4096x256x4096 with 64 chunks
+		7, (uint8_t[]){5,1,5} 	4096x256x4096 with 128 chunks
+	*/
 	set = chunkset_create( 
-		6, (uint8_t[]){5,2,5}
+		6, (uint8_t[]){6,2,6}
 	);
-	
+
 	//chunkset_clear_import( set );
 	chunkset_clear( set );
 	chunkset_create_shadow_map( set );
 	chunkset_gen( set );
 	
-	//cam = *gfx_camera_create();
 	cam.location[1] = 512;
 	cam.fov =  90.0f;
 	cam.far_plane = 1024*2;
 
 	renderer = (char*)glGetString(GL_RENDERER);
-
 
 	pthread_create( &mesher_thread, NULL, mesher_loop, NULL);
 
@@ -216,26 +251,6 @@ int game_init(){
 	return 0;
 }
 
-
-void _ss2ws(
-	uint16_t x,
-	uint16_t max_x,
-	uint16_t y,
-	uint16_t max_y,
-	mat4 mat, // Inverse projection matrix
-	vec3 ray
-){
-	
-	float ray_clip[] = {
-		 (x/(float)max_x) * 2.0f - 1.0f,
-		-(y/(float)max_y) * 2.0f + 1.0f,
-		-1.0f, 1.0f
-	};
-	
-	glm_mat4_mulv3( mat, ray_clip, 1.0f, ray );
-	glm_vec_norm(ray);
-
-}
 
 
 void game_tick(){
@@ -254,7 +269,9 @@ void game_tick(){
 	ctx_get_window_size( &width, &height  );
 	glViewport(0,0,width,height);
 	
-	// CAMERA POISITION AND STUFF
+	//
+	// Camera position and matrices
+	//
 
 	double cur_x, cur_y;
 	ctx_cursor_movement( &cur_x, &cur_y  );
@@ -329,6 +346,10 @@ void game_tick(){
 		cam.frustum_planes
 	);
 
+	//
+	// Create draw queue and set LOD levels
+	//
+
 	uint32_t splat_count = 0;
 	uint32_t vertex_count = 0;
 
@@ -350,28 +371,31 @@ void game_tick(){
 		if( debug_mark_near ){
 			c->lod = (distance > 128.0);
 			if((distance > 1024.0)) c->lod = 2;
+
+			// Lod above 2 is broken atm
 			//if((distance > 1024.0)) c->lod = 3;
 			//if((distance > 2048.0)) c->lod = 3;
 			//if((distance > 4096.0)) c->lod = 4;
 			//if((distance > cam.far_plane)) c->lod = -1;
 		}
 		
-
-
 		if( c->mesher_lock && *c->mesher_lock ) goto push;
 
-		if( c->gl_vbo == 0 && c->gl_vbo_local == 0) continue;
-		if( c->gl_vbo_local_items == 0 ) continue;
 
-		if( distance > cam.far_plane ) continue;
-		if( !gfx_fcull(cam.frustum_planes, cwp, set->root*0.85) ) continue;
-	//	if( c->gl_vbo_type )
-	//		chunk_near_draw_queue[chunk_near_draw_queue_count++] = c;
-	//	else
+		if( c->gl_vbo == 0 && c->gl_vbo_local == 0) 				continue;
+		if( c->gl_vbo_local_items == 0 ) 							continue;
+
+		// Frustum cull
+		if( distance > cam.far_plane ) 								continue;
+		if( !gfx_fcull(cam.frustum_planes, cwp, set->root*0.85) ) 	continue;
+
 		push:
 			chunk_draw_queue[chunk_draw_queue_count++] = c;
 	}
 
+	//
+	// Render!
+	//
 
 	glClearColor( 0.5, 0.5, 0.7, 1.0  );
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -396,7 +420,7 @@ void game_tick(){
 	);
 
 
-	// DRAW AABB WIREFRAMES
+	// Draw chunk AABB wireframes
 	if(show_chunks){
 		for( int i = 0; i < chunk_draw_queue_count; i++  ){
 			struct ChunkMD *c = chunk_draw_queue[i];
@@ -438,11 +462,14 @@ void game_tick(){
 			(float[]){1.0, 0.0, 1.0, 1.0}
 		);
 	}
+
+	//
+	// World editing 
+	//
 	
 	int _break = ctx_input_break_block();
 	int _place  = ctx_input_place_block();
 
-	// RAYCAST
 	if( (_break) ||
 		(_place)
 	 ){
@@ -489,8 +516,9 @@ void game_tick(){
 		}
 	}
 
-
-	// INFO
+	//
+	// Info
+	//
 
 	int w, h;
 	ctx_get_window_size( &w, &h );
@@ -536,15 +564,13 @@ void game_tick(){
 
 	gfx_crosshair_draw();
 
-
-
 	//ctx_swap_buffers();
 	glFlush();
+
 	// Frame limit
 	capped = ' ';
 	double worked = ctx_time();
 	if( worked-now < 0.0032 && fps > 280) {
-		//usleep( 3*1000.0 );
 		while( ctx_time() < now+0.0032 ) usleep(50);
 		capped = '*';
 	}

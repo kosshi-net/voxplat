@@ -605,14 +605,14 @@ void chunkset_manage(
 		uint32_t geom_items = 0; 
 		uint32_t indx_items = 0; 
 		if( c->lod == 0 ) {
-			double t = ctx_time();
+			//double t = ctx_time();
 			 chunk_make_mesh(
 				set, c, 
 				mesher[omp_id].geom[buf_id], &geom_items, 
 				mesher[omp_id].work[buf_id], &indx_items
 			);
-			t = ctx_time()-t;
-			logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);
+			//t = ctx_time()-t;
+			//logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);
 		} else {
 
 			chunk_make_mask( set, c, mesher[omp_id].mask[buf_id] );
