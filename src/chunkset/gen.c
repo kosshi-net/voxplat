@@ -221,7 +221,7 @@ void chunkset_gen( struct ChunkSet* set )
 		done++;
 
 		chunk_close_rw(c);
-		//chunk_compress(c);
+		chunk_compress(c);
 	}
 
 	chunkset_gen_trees( set );

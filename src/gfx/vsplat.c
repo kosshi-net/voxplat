@@ -74,10 +74,10 @@ int gfx_vsplat_init(void)
 				 "u_view_translation");
 
 	vsplat_shader_uViewportSize = glGetUniformLocation(vsplat_shader, 
-				"uViewport");
+				 "uViewport");
 
 	vsplat_shader_uTex = glGetUniformLocation(vsplat_shader, 
-				"uTex");
+				 "uTex");
 
 	vsplat_shader_u_far = glGetUniformLocation(vsplat_shader, 
 				 "u_far");
@@ -87,11 +87,9 @@ int gfx_vsplat_init(void)
 
 	vsplat_shader_aVertex =
 		glGetAttribLocation	(vsplat_shader, "aVertex");
-//	glEnableVertexAttribArray(vsplat_shader_aVertex);
 
 	vsplat_shader_aColor =
 		glGetAttribLocation	(vsplat_shader, "aColor");
-//	glEnableVertexAttribArray(vsplat_shader_aColor);
 
 
 

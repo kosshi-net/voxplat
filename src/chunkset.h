@@ -39,7 +39,7 @@ struct ChunkMD {
 	pthread_mutex_t mutex;
 
 	uint32_t last_access;	// ctx_time()
-	uint32_t readers;		// num threads are reading the chunk
+	uint32_t readers;		// num threads are reading the chunk (UNUSED)
 	uint32_t count;			// Count of voxels
 	uint16_t offset[3];		// In chunks
 	Voxel  *voxels;			
@@ -67,7 +67,7 @@ struct ChunkMD {
 
 	uint8_t	    *mesher_lock;
 
-	// NEW
+	// use this in the future?
 /*
 	// REMOTE
 	uint8_t		splat_dirty;
@@ -92,6 +92,8 @@ struct ChunkMD {
 */
 };
 
+// Some sort of documentation
+
 /*
  * ChunkMD states
  *
@@ -111,10 +113,12 @@ struct ChunkMD {
  *
  * Geometry
  *	setting dirty invalidates VBO
- *	vbo_local has to be uploaded to GPU and nulled
+ *	vbo_local is used to store and commit changes to geometry
+ *  - Set all the other variables like item count before setting vbo_local !!!
  *
  * TODO
- * 	Figure out what to do when chunk doenst anymore generate a mesh
+ * 	Make sure everything works properly when chunk doenst anymore generate a 
+ *  mesh (when all the voxels are removed)
  */
 
 
@@ -122,7 +126,7 @@ struct ChunkMD {
  * Types 
  *
  * Cuberoots: uint8_t
- * bitwidth values: uint8_t
+ * Bitwidth values: uint8_t
  *
  * Iterators: uint32_t
  *
@@ -136,15 +140,16 @@ struct ChunkMD {
 /*
  * Bitshift magic
  * 
- * With 2^N cuberoots, the iterators happen contain the 3d coordinates:
+ * With 2^N cuberoots, the iterators happen to contain the 3d coordinates:
  *		X	Y	Z
- *	0b 110 010 001 INDEX = 86 of a 8*8*8 volume.
+ *	0b 110 010 001, INDEX = 86 of a 8*8*8 volume.
+ *	    6   2   1
  * 
  * INDEX += n << 3 moves index in Y+n
- * bitw variables are short from bit width.
+ * bitw means "bit width"
  *
- * bitroot = log2(root);
- * root = 1 << bitroot;
+ * root_bitw = log2(root);
+ * root = 1 << root_bitw;
  * For chunk coordinates the bitwidths may be different per dimension
  */
 
@@ -165,8 +170,9 @@ void chunk_close_rw( struct ChunkMD* );
 Voxel voxel_read( struct ChunkSet*, uint32_t*  );
 void  voxel_write( struct ChunkSet*, uint32_t*, Voxel );
 
-// Potentially globally useful helpers
+void chunk_compress(struct ChunkMD *c);
 
+// Potentially globally useful helpers
 uint32_t flatten3( const uint16_t* l, const uint8_t* b );
 uint32_t flatten1( const uint16_t* l, const uint16_t b );
 

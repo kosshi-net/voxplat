@@ -18,6 +18,7 @@
 char _str [SS];
 char _strf[SS];
 
+// improve me
 #define logf_info(msg, ...) {\
 	snprintf( _strf, SS, msg, ## __VA_ARGS__  );\
 	log_info( _strf );}

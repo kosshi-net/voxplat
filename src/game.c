@@ -118,6 +118,15 @@ void command_held_voxel( int argc, char **argv ){
 	logf_info("%i", held_voxel);
 }
 
+uint8_t brush_size = 5;
+void command_brush_size( int argc, char **argv ){
+	if(argc == 2){
+		float temp = atoi(argv[1]);
+		brush_size = temp;
+	}
+	logf_info("%i", brush_size);
+}
+
 void command_memory_debug( int argc, char **argv ){
 	mem_log_debug();
 }
@@ -179,6 +188,7 @@ int game_init(){
 	shell_bind_command("color",		 		&command_held_voxel);
 	shell_bind_command("memory_debug", 		&command_memory_debug);
 	shell_bind_command("export", 			&command_export);
+	shell_bind_command("brush_size", 		&command_brush_size);
 
 	gfx_vsplat_init();
 	gfx_vmesh_init();
@@ -302,7 +312,7 @@ void game_tick(){
 		cam.view
 	 );
 
-	glm_mul(cam.projection, cam.view, cam.view_projection);
+	glm_mul( cam.projection, cam.view, cam.view_projection );
 
 	glm_mul( 
 		cam.projection,
@@ -313,7 +323,6 @@ void game_tick(){
 		cam.inv_proj_view_rot,
 		cam.inv_proj_view_rot
 	);
-
 
 	gfx_fcull_extract_planes( 
 		(float*)cam.view_projection,
@@ -339,7 +348,7 @@ void game_tick(){
 		}
 		float distance = glm_vec_distance( here, cwp );
 		if( debug_mark_near ){
-			c->lod = (distance > 200.0);
+			c->lod = (distance > 128.0);
 			if((distance > 1024.0)) c->lod = 2;
 			//if((distance > 1024.0)) c->lod = 3;
 			//if((distance > 2048.0)) c->lod = 3;
@@ -458,15 +467,15 @@ void game_tick(){
 		);
 		if( v2>0 && _break  ){
 			uint32_t u[3];
-			for( u[0] = hitcoord[0]-10; u[0] < hitcoord[0]+10; u[0]++ )
-			for( u[1] = hitcoord[1]-10; u[1] < hitcoord[1]+10; u[1]++ )
-			for( u[2] = hitcoord[2]-10; u[2] < hitcoord[2]+10; u[2]++ ){
+			for( u[0] = hitcoord[0]-brush_size; u[0] < hitcoord[0]+brush_size; u[0]++ )
+			for( u[1] = hitcoord[1]-brush_size; u[1] < hitcoord[1]+brush_size; u[1]++ )
+			for( u[2] = hitcoord[2]-brush_size; u[2] < hitcoord[2]+brush_size; u[2]++ ){
 				float _a[3], _b[3];
 				for (int i = 0; i < 3; ++i){	
 					_a[i] = (float)u[i];
 					_b[i] = (float)hitcoord[i];
 				}
-				if (glm_vec_distance(_a, _b) < 10){
+				if (glm_vec_distance(_a, _b) < brush_size){
 					chunkset_edit_write(set, u, 0);
 					shadow_break_update(set, u);
 				}

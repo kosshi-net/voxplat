@@ -6,8 +6,11 @@
 
 #include <pthread.h>
 
+// Alloc wrapper, keeps track of memory usage
+// Todo: your own malloc
+
 #define ALLOC_TABLE_SIZE (1024*512)
-#define MAX_DYNAMIC_BYTES (1024*1024*1024*(size_t)10)
+#define MAX_DYNAMIC_BYTES (1024*1024*1024*(size_t)4)
 
 pthread_mutex_t mem_mtx = PTHREAD_MUTEX_INITIALIZER;
 
@@ -101,10 +104,6 @@ void* _mem_calloc( size_t bytes, char*label ){
 
 	return p;
 }
-
-
-
-
 
 void _mem_free( void* p, char*label){
 	

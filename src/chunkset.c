@@ -100,6 +100,9 @@ void chunkset_clear( struct ChunkSet *set )
 		c->dirty = 1;
 		
 		c->gl_vbo =  0;
+
+		chunk_compress(c);
+
 		i++;
 
 	}
@@ -184,6 +187,8 @@ void chunkset_clear_import( struct ChunkSet *set )
 	logf_info("Imported");
 }
 
+// This shadow stuff is very work in progress and ugly!
+
 uint32_t shadow_map_index( 
 	struct ChunkSet *set, 
 	uint32_t x, 
@@ -201,8 +206,7 @@ uint8_t sample_shadow(
 			set,
 			ws[0]-ws[1],
 			ws[2]-ws[1]
-		) & (set->shadow_map_length-1) ] < ws[1]+1)
-		;
+		) & (set->shadow_map_length-1) ] < ws[1]+1)	;
 }
 
 uint8_t sample_shadow_c( 
@@ -215,15 +219,14 @@ uint8_t sample_shadow_c(
 			set,
 			(ws[0] + (c->offset[0]<<set->root_bitw))-ws[1],
 			(ws[2] + (c->offset[2]<<set->root_bitw))-ws[1]
-		) & (set->shadow_map_length-1) ] < ws[1]+1)
-		;
+		) & (set->shadow_map_length-1) ] < ws[1]+1);
 }
 
 void shadow_place_update(
 	struct ChunkSet *set,
 	uint32_t *ws
 ){
-	// If voxel shaded, dont do shit
+	// If voxel shaded, dont do anything
 	if( sample_shadow( set, ws ) ) return;
 	//uint32_t wsy = (set->max[1] << set->root_bitw);
 	uint32_t sx = ws[0]-(ws[1]);
@@ -384,10 +387,8 @@ void chunk_close_rw( struct ChunkMD *c )
 }
 
 
-
-
 // Checks chunk safety
-// Is the voxel inside of a chunk, or its edge? 
+// Is the voxel inside of a chunk, or on its edge? 
 int voxel_chunk_safe(
 	struct ChunkSet *set,
 	struct ChunkMD *c,
@@ -510,7 +511,7 @@ void chunk_compress(struct ChunkMD *c){
 
 	void *vxl = c->voxels;
 	c->voxels = NULL;
-	pthread_mutex_lock( &c->mutex );
+	pthread_mutex_lock( &c->mutex ); // Fix this
 
 	c->rle = rle_compress( vxl, c->count  );
 	mem_free( vxl );
@@ -576,7 +577,7 @@ void chunkset_manage(
 			!c->gl_vbo_local_lod == !c->lod
 		) {
 			if( c->rle == NULL 
-			&&	c->last_access+1 < ctx_time() ){
+			&&	c->last_access+1.0 < ctx_time() ){
 				chunk_compress(c);
 				meshed_count++;
 			}
@@ -588,7 +589,6 @@ void chunkset_manage(
 
 		chunk_open_ro(c);
 
-		// Remember, meshing takes time!!! things may change!!!
 		// Mark now, if theres a write while we do stuff, let it happen
 		c->dirty = 0;
 		c->gl_vbo_local_lod = c->lod;
@@ -602,15 +602,17 @@ void chunkset_manage(
 		memset( mesher[omp_id].geom[buf_id], 0, 
 				mesher[omp_id].geom_size );
 
-		double t = ctx_time();
 		uint32_t geom_items = 0; 
 		uint32_t indx_items = 0; 
 		if( c->lod == 0 ) {
+			double t = ctx_time();
 			 chunk_make_mesh(
 				set, c, 
 				mesher[omp_id].geom[buf_id], &geom_items, 
 				mesher[omp_id].work[buf_id], &indx_items
 			);
+			t = ctx_time()-t;
+			logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);
 		} else {
 
 			chunk_make_mask( set, c, mesher[omp_id].mask[buf_id] );
@@ -645,8 +647,6 @@ void chunkset_manage(
 
 		}
 
-		t = ctx_time()-t;
-		//logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);
 
 
 		c->gl_vbo_local_items = geom_items;

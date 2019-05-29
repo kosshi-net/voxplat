@@ -37,7 +37,7 @@ int gfx_init() {
 
 GLuint gfx_create_shader(const char* vert_src, const char* frag_src){
 		
-	log_info( "Compiling shader..." );
+	//log_info( "Compiling shader..." );
 
 	int InfoLogLength = 0;
 
@@ -82,7 +82,7 @@ GLuint gfx_create_shader(const char* vert_src, const char* frag_src){
 	}
 	
 	if ( InfoLogLength==0  ){
-		log_info( "Shader compile ok" );
+		//log_info( "Shader compile ok" );
 	}else{
 		panic();
 	}

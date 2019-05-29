@@ -14,8 +14,10 @@
  * 
  * NUM DATA NUM DATA NUM DATA NULL
  * 
- * Null is a terminator
+ * Terminate when NUM is 0 
  *
+ * Note:
+ * When changing voxel byte size in chunkset.h, some edits here may be necessary
  */
 
 

@@ -13,8 +13,7 @@
 
 #include "rle.h"
 
-// When the file starts with look up tables, 
-// you know its  going to be fun!
+// When the file starts with look up tables, you know its going to be fun!
 
 // These are vertices of each face of a cube
 const float lutv[72] = {
@@ -450,7 +449,7 @@ void chunk_make_splatlist(
 
 
 
-void chunk_make_splatlist2(
+void chunk_make_splatlist2( // UNUSED
 	struct ChunkSet *setp,
 	struct ChunkMD *cp,
 	int16_t *geometry,

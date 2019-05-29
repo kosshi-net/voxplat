@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.12)
 project ("Voxplat")
 
 set( VERSION_MAJOR 0 )
-set( VERSION_MINOR 6 )
+set( VERSION_MINOR 7 )
 
 ### PLATFORM DETECTION ###
 	if(APPLE)
@@ -32,7 +32,6 @@ set( VERSION_MINOR 6 )
 
 	# DEBUG
 	set( DEBUG_GFX_TEXT_WRITE_PPM 0 )
-
 
 	configure_file(config.h.in ${PROJECT_SOURCE_DIR}/include/config.h)
 
@@ -64,9 +63,9 @@ set( VERSION_MINOR 6 )
 
 	# OPENMP
 	find_package(OpenMP REQUIRED)
-	# find with find /usr -name omp.h
+	# In case linters still complain:
 	# include_directories(/usr/lib/gcc/x86_64-pc-linux-gnu/8.2.1/include/)
-
+	# "find /usr -name omp.h"
 
 	include_directories	(include)	
 	include_directories	(src)
@@ -74,4 +73,3 @@ set( VERSION_MINOR 6 )
 ### BUILD ###
 
 add_subdirectory(src)
-

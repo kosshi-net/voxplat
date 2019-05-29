@@ -52,7 +52,6 @@ vec3 ss2wsVec(float x, float y){
 		-1.0, 1.0
 	);
 
-	//vec4 ray = uPMatrixInverse * ray_clip;
 	vec4 ray = u_inv_proj_view_rot * ray_clip;
 
 	return normalize(ray.xyz/ray.w);
@@ -80,75 +79,72 @@ void main(void) {
 		vec3( vxl+0.5*u_lod)
 	);
 
-	//if( ! (result.x<=result.y) ) discard;
-
-	if( ! (result.x<=result.y) ) {
+	if( !(result.x<=result.y) ) {
 
 		//gl_FragDepth = 0.99;
 		//out_Color = vec4(1);
+
 		discard;
+
 	} else {
+		// Fragment is on the voxel
 
-	// CALCULATE NORMAL
+		// Calc normal
+
+		vec3 hit = vxl - ray * result.x; // Relative to voxel center (-0.5 to 0.5)
+
+		vec3  hit_abs = abs(hit); 
+		float max_dim = max( max( hit_abs.x, hit_abs.y), hit_abs.z  );
+
+		vec3 normal = vec3(
+			float(hit_abs.x == max_dim), 
+			float(hit_abs.y == max_dim), 
+			float(hit_abs.z == max_dim) 
+		)*sign(hit);
+
+		// Calc texture coordinates
+
+		vec2 uv;
+		if( normal.y != 0.0 ){
+			uv.y = hit.x;
+			uv.x = hit.z*normal.y;
+		}
+		if( normal.x != 0.0 ){
+			uv.y = hit.y;
+			uv.x = hit.z*normal.x;
+		}
+		if( normal.z != 0.0 ){
+			uv.y = hit.y;
+			uv.x = hit.x*-normal.z;
+		}
+
+		uv = uv + 0.5;
+
+		// Calc color
+
+		vec3 r = -normal;
+		
+		vec3 color;
+
+		color = vColor * max( max(0.7, ndotl), sign( dot(r, light) ) );
+
+		//color = vColor * ( 0.7 * float( d < 0 ));
+		//vec3 color = vColor;
+		//color*=texture(uTex, uv).xyz;
+		//vec3 color  = vec3( uv.x, 0.0, uv.y );
+		//vec3 color = texture(uTex, uv).xyz;
+
+		// Fog 
+
+		gl_FragDepth = result.x/u_far;
+
+		float fog = pow(gl_FragDepth,0.7);
+
+		out_Color = vec4( mix( 
+			color, 
+			vec3( 0.5, 0.5, 0.7), // Color of the sky
+			(fog)
+		), 1.0 );
 	
-	vec3 hit = vxl - ray*result.x;
-	vec3 absHit = abs(hit); // Relative to voxel center
-	
-	float max_dim = max( max( absHit.x, absHit.y), absHit.z  );
-
-	vec3 normal = vec3(
-		float(absHit.x == max_dim), 
-		float(absHit.y == max_dim), 
-		float(absHit.z == max_dim) 
-	)*sign(hit);
-
-	// UV
-	vec2 uv;
-	if( normal.y != 0.0 ){
-		uv.y = hit.x;
-		uv.x = hit.z*normal.y;
 	}
-	if( normal.x != 0.0 ){
-		uv.y = -hit.y;
-		uv.x = hit.z*normal.x;
-	}
-	if( normal.z != 0.0 ){
-		uv.y = -hit.y;
-		uv.x = hit.x*-normal.z;
-	}
-
-	uv = uv + 0.5;
-
-	// COLOR
-
-	//vec3 r = reflect( ray, normal );
-	vec3 r = -normal;
-	//vec3 color =  vColor * ( dot( r, light) / 4.0 + 0.75 );
-	vec3 color;
-
-	color = vColor * max( max(0.7, ndotl), sign( dot(r, light) ) );
-
-	//color = vColor * ( 0.7 * float( d < 0 ));
-	//vec3 color = vColor;
-	//color*=texture(uTex, uv).xyz;
-	//vec3 color  = vec3( uv.x, 0.0, uv.y );
-	//vec3 color = texture(uTex, uv).xyz;
-
-	// FOG
-
-
-	gl_FragDepth = result.x/u_far;
-
-	float fog = pow(gl_FragDepth,0.7);
-	//float fog = 0;
-
-	out_Color = vec4( mix( 
-		color, 
-		vec3(0.5,0.5,0.7) ,
-		(fog)
-	), 1.0 );
-	
-
-	}// END DISCARD ELSE
-
 }

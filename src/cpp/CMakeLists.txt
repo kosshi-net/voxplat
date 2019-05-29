@@ -1,5 +1,4 @@
 
-
 set( directory ${PROJECT_SOURCE_DIR}/${EXTERNAL}/FastNoiseSIMD/FastNoiseSIMD  )
 
 add_library( noise

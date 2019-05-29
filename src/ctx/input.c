@@ -147,6 +147,7 @@ int ctx_input_init(){
 	logf_info( "Click to lock cursor" );
 	logf_info( "ESC to unlock cursor " );
 	logf_info( "LMB to break voxels" );
+	logf_info( "SHIFT+LMB to break continuously")
 	logf_info( "RMB to place voxels" );
 	logf_info( "WASD to move around" );
 	logf_info( "F12 to toggle shell" );
