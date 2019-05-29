@@ -5,9 +5,14 @@ A hybrid voxel rendering engine
 Mainly uses splatting, uses regular mesh for nearby voxels for better 
 performance and additional effects
 
-https://kosshi.net/experiments/voxplat.html
+![Pretty picture](https://i.imgur.com/ytUnnra.png)
+![Pretty picture](https://i.imgur.com/BmAt7jr.png)
+![Pretty picture](https://i.imgur.com/Gw4Vdu5.png)
+More pretty pictures and history at https://imgur.com/a/6zwciLy
 
-![Pretty picture](https://kosshi.net/u/efexh.png)
+## Engine features
+- Hybrid rendering for large drawdistances and high performance
+- Custom world generator
 
 ## Building
 - Requires CMAKE
