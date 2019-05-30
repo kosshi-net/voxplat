@@ -16,7 +16,7 @@ voxels, so hybrid rendering is used: meshes for nearby, splatting farther away.
 
 I have not measured the vram usage, but I estimate it should be around 200-500MB.  
 System ram usage depends on the scene and how aggressive RLE is. For the default 
-2048x256x2048 scene and RLE settings, it does not seem to exceed 3GB. A quadcore
+4096x256x4096 scene and RLE settings, it does not seem to exceed 3GB. A quadcore
 CPU is needed to get the world meshed fully in a reasonable amount of time.
 
 ### Relevant
@@ -36,7 +36,7 @@ Development is mostly halted for now, but not abandoned.
 - Block placement and removal
 - Completetly fake shadows and ambient occlusion
 - Custom world generator for pretty screenshots
-- No hardcoded world or chunk size
+- No "hardcoded" world or chunk size
 - RLE compression
 - Ingame console (F12 to toggle)
 - Texture support, but its hard disabled for looks. I like solidcolor voxels :)
