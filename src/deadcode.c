@@ -134,3 +134,22 @@ uint32_t chunkset_mesher_simd(
 }
 
 
+/*
+	logf_info( "Calculating shadows" );
+	double t = ctx_time();
+
+	//for (ws[0] = 0; ws[0] < map_x; ++ws[0])
+	#pragma	omp parallel for
+	for (int i = 0; i < set->shadow_map_size[0]; ++i)
+	{
+		uint32_t ws[3];
+		ws[1] = 0;
+		ws[0] = i;
+		for (ws[2] = 0; ws[2] < set->shadow_map_size[1]; ++ws[2]) {
+			shadow_update( set, ws );
+		}
+	}
+
+
+	logf_info( "Took %.2f seconds", ctx_time()-t );
+*/

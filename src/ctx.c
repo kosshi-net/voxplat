@@ -1,6 +1,7 @@
 #define __FILENAME__ "ctx.c"
 
 #include <config.h>
+#include <cfg.h>
 
 #include "ctx.h"
 #include "event.h"
@@ -38,9 +39,16 @@ int ctx_init()
 	// OpenGL 3.3 Core
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+
+	if( cfg_get()->opengl_compat )
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+	 else 
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	if( cfg_get()->opengl_debug ){
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+	}
+
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
 	//glfwWindowHint(GLFW_SAMPLES, MSAA_SAMPLES);
 	//
@@ -48,7 +56,7 @@ int ctx_init()
 
 
     window = glfwCreateWindow(640, 480, PROJECT_NAME, NULL, NULL);
-	glfwSwapInterval(0);
+	//glfwSwapInterval(0);
 
     if (!window) {
         glfwTerminate();
@@ -68,7 +76,7 @@ int ctx_init()
 	const unsigned char*version  = glGetString(GL_VERSION); 
 	logf_info("%s", renderer);
 	logf_info("OpenGL %s", version);
-	   	logf_info("CTX GLAD %d.%d", GLVersion.major, GLVersion.minor);
+	logf_info("CTX GLAD %d.%d", GLVersion.major, GLVersion.minor);
 
 	log_info( "Init ok"  );
 	return 0;

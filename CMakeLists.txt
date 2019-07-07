@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.12)
 project ("Voxplat")
 
 set( VERSION_MAJOR 0 )
-set( VERSION_MINOR 7 )
+set( VERSION_MINOR 8 )
 
 ### PLATFORM DETECTION ###
 	if(APPLE)

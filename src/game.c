@@ -8,6 +8,7 @@
 #include <cglm/cglm.h>
 
 #include <config.h>
+#include "cfg.h"
 
 #include "event.h"
 #include "ctx.h"
@@ -230,9 +231,14 @@ int game_init(){
 		6, (uint8_t[]){6,2,6} 	4096x256x4096 with 64 chunks
 		7, (uint8_t[]){5,1,5} 	4096x256x4096 with 128 chunks
 	*/
+	//set = chunkset_create( 
+	//	6, (uint8_t[]){5,2,5}
+	//);
+	
 	set = chunkset_create( 
-		6, (uint8_t[]){6,2,6}
+		cfg_get()->chunk_size, cfg_get()->world_size
 	);
+
 
 	//chunkset_clear_import( set );
 	chunkset_clear( set );

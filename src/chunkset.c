@@ -23,6 +23,10 @@
 
 #include <omp.h>
 
+
+//#define DISABLE_SHADOWS 1
+
+
 struct ChunkSet * 
 chunkset_create( uint8_t root_bitw, uint8_t max_bitw[] )
 {
@@ -108,11 +112,17 @@ void chunkset_clear( struct ChunkSet *set )
 	}
 
 	// Nullchunk
+	
 	set->null_chunk = mem_calloc(sizeof(struct ChunkMD));
 	struct ChunkMD *c = set->null_chunk;
 	c->last_access = ctx_time();
 	c->count = num_voxels;
 	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+
+	mem_free( rle_compress(c->voxels, num_voxels) );
+
+	//mem_calloc( 0 );
+
 }
 
 void chunkset_clear_import( struct ChunkSet *set )
@@ -180,7 +190,7 @@ void chunkset_clear_import( struct ChunkSet *set )
 	c->count = num_voxels;
 	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
 
-	// Prepare rle lib
+	// Prepare rle lib");
 	mem_free( rle_compress(c->voxels, num_voxels) );
 
 
@@ -194,6 +204,9 @@ uint32_t shadow_map_index(
 	uint32_t x, 
 	uint32_t y 
 ){
+	#ifdef DISABLE_SHADOWS
+	return 0;
+	#endif
 	return y * (set->max[0]<<set->root_bitw) + x;
 }
 
@@ -201,6 +214,9 @@ uint8_t sample_shadow(
 	struct ChunkSet *set, 
 	uint32_t *ws 
 ){
+	#ifdef DISABLE_SHADOWS
+	return 0;
+	#endif
 	return !
 		(set->shadow_map[ shadow_map_index(
 			set,
@@ -214,6 +230,9 @@ uint8_t sample_shadow_c(
 	struct ChunkMD *c, 
 	uint16_t *ws 
 ){
+	#ifdef DISABLE_SHADOWS
+	return 0;
+	#endif
 	return !
 		(set->shadow_map[ shadow_map_index(
 			set,
@@ -226,6 +245,9 @@ void shadow_place_update(
 	struct ChunkSet *set,
 	uint32_t *ws
 ){
+	#ifdef DISABLE_SHADOWS
+	return;
+	#endif
 	// If voxel shaded, dont do anything
 	if( sample_shadow( set, ws ) ) return;
 	//uint32_t wsy = (set->max[1] << set->root_bitw);
@@ -238,6 +260,9 @@ void shadow_break_update(
 	struct ChunkSet *set,
 	uint32_t *ws
 ){
+	#ifdef DISABLE_SHADOWS
+	return;
+	#endif
 	// If voxel is the occluder, reflow
 	if( sample_shadow( set, ws ) ) return;
 
@@ -265,6 +290,10 @@ void shadow_update(
 	struct ChunkSet *set,
 	uint32_t *ws
 ){
+
+	#ifdef DISABLE_SHADOWS
+	return;
+	#endif
 	uint32_t wsy = (set->max[1] << set->root_bitw);
 
 	uint32_t sx = ws[0]-(ws[1]);
@@ -289,6 +318,10 @@ void chunkset_create_shadow_map(
 	struct ChunkSet *set
  ){
 
+	#ifdef DISABLE_SHADOWS
+	return;
+	#endif
+
 
 	uint32_t wsy = (set->max[1] << set->root_bitw);
 
@@ -308,25 +341,7 @@ void chunkset_create_shadow_map(
 	{
 		set->shadow_map[i] = 0;
 	}
-/*
-	logf_info( "Calculating shadows" );
-	double t = ctx_time();
 
-	//for (ws[0] = 0; ws[0] < map_x; ++ws[0])
-	#pragma	omp parallel for
-	for (int i = 0; i < set->shadow_map_size[0]; ++i)
-	{
-		uint32_t ws[3];
-		ws[1] = 0;
-		ws[0] = i;
-		for (ws[2] = 0; ws[2] < set->shadow_map_size[1]; ++ws[2]) {
-			shadow_update( set, ws );
-		}
-	}
-
-
-	logf_info( "Took %.2f seconds", ctx_time()-t );
-*/
 }
 
 
@@ -358,9 +373,15 @@ void chunk_open_ro( struct ChunkMD *c )
 		panic();
 	}else{
 		// Uncompress chunk!
+		
 		c->voxels = rle_decompress(c->rle);
 		mem_free(c->rle);
 		c->rle = NULL;
+		
+
+		//c->voxels = c->rle;
+		//c->rle = NULL;
+
 		pthread_mutex_unlock( &c->mutex );
 		return;
 	}
@@ -509,12 +530,14 @@ int voxel_visible(
 
 void chunk_compress(struct ChunkMD *c){
 
+	pthread_mutex_lock( &c->mutex ); // Fix this
+
 	void *vxl = c->voxels;
 	c->voxels = NULL;
-	pthread_mutex_lock( &c->mutex ); // Fix this
 
 	c->rle = rle_compress( vxl, c->count  );
 	mem_free( vxl );
+
 	pthread_mutex_unlock( &c->mutex );
 }
 

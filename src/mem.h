@@ -14,6 +14,7 @@
 #define mem_calloc(s) _mem_calloc(s, SOURCE )
 #define mem_free(s) _mem_free(s, SOURCE )
 
+int mem_init(size_t);
 
 void * _mem_alloc  	( size_t, char*label );
 void * _mem_calloc	( size_t, char*label );

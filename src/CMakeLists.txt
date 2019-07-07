@@ -46,6 +46,7 @@ add_library( ecs
 
 add_executable( game
 	main.c	
+	cfg.c	
 	game.c
 
 	chunkset.c

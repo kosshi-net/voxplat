@@ -39,7 +39,10 @@ int rle_init(){
 
 Voxel *rle_compress( Voxel* data, uint32_t length )
 {
+	//logf_info("Compress");
 	pthread_mutex_lock( &rle_work_mutex  );
+
+	
 	
 	if( rle_work_buf_len < length  ){
 		logf_info( "Resizing working buffer from %i to %i", 
@@ -47,8 +50,9 @@ Voxel *rle_compress( Voxel* data, uint32_t length )
 			length 
 		);
 		if(rle_work_buf != NULL) mem_free(rle_work_buf);
-		rle_work_buf = mem_alloc( length );
 		rle_work_buf_len = length;
+
+		rle_work_buf = mem_alloc( rle_work_buf_len );
 	}
 	
 
@@ -81,9 +85,9 @@ Voxel *rle_compress( Voxel* data, uint32_t length )
 	rle_work_buf[b++] = 0;
 	rle_work_buf[b++] = 0;
 
-	Voxel *buf = mem_alloc( b*sizeof(Voxel) );
+	Voxel *buf = mem_alloc( b );
 
-	memcpy( buf, rle_work_buf, b*sizeof(Voxel) );
+	memcpy( buf, rle_work_buf, b );
 
 	pthread_mutex_unlock( &rle_work_mutex  );
 
@@ -93,6 +97,7 @@ Voxel *rle_compress( Voxel* data, uint32_t length )
 
 Voxel *rle_decompress( Voxel *data  )
 {
+	//logf_info("Decompress");
 	pthread_mutex_lock( &rle_work_mutex  );
 
 	Voxel count = 0;

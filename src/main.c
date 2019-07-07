@@ -2,6 +2,7 @@
 #include <config.h>
 
 #include "ctx.h"
+#include "cfg.h"
 #include "ctx/input.h"
 #include "gfx.h"
 #include "gfx/text.h"
@@ -76,8 +77,12 @@ void check_glerr(void){
 	}
 }
 
-int main(void)
+int main(int argc, char **argv)
 {	
+	cfg_init(argc, argv);
+
+	mem_init( cfg_get()->heap );
+
 	log_init();
 
 	
@@ -111,8 +116,10 @@ int main(void)
 	noise_init();
 
 	logf_info("Init game ...");
+	
 	if( game_init() ) return 1;
 	check_glerr();
+	
 	logf_info("Init done!");
 
 	game_tick();
@@ -121,6 +128,7 @@ int main(void)
 
     while ( !ctx_should_close() )
     {	
+    
     	check_glerr();
 
     	ctx_input_set_mode( ctx_input_preferred_mode() );
@@ -129,7 +137,7 @@ int main(void)
 			gfx_shell_exclusive_draw();
 		else
 			game_tick();
-
+	
 		ctx_poll_events();
     }
     event_fire(EVENT_EXIT, NULL);

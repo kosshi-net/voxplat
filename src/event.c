@@ -19,7 +19,7 @@
 // See header file for events.
 
 
-#define LOG_LINES 255
+#define LOG_LINES 64
 
 //char*			log_history			[LOG_HISTORY_SIZE];
 char * 			log_history;
@@ -66,6 +66,9 @@ void log_history_push(Event level, const char*str){
 		log_history[_i+len] = '\0';
 
 		log_last++;
+
+		log_last %= LOG_LINES;
+
 		log_length++;
 
 		s = i+1;
@@ -75,12 +78,16 @@ void log_history_push(Event level, const char*str){
 }
 
 uint8_t log_hist_level(uint8_t n){
-	uint8_t i = log_last-n;
+	//uint8_t i = (log_last-n) % LOG_LINES;
+	int8_t i = (log_last-n);
+	if( i < 0 ) i = LOG_LINES+i;
 	return log_history_level[ i ];
 }
 
 char* log_hist_line(uint8_t n){
-	uint8_t i = log_last-n;
+	//uint8_t i = (log_last-n) % LOG_LINES;
+	int8_t i = (log_last-n);
+	if( i < 0 ) i = LOG_LINES+i;
 	
 	return log_history + i*LOG_LINE_LENGTH ;
 
