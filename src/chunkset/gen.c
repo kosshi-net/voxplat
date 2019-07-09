@@ -85,7 +85,13 @@ void chunkset_gen_trees( struct ChunkSet* set){
 
 	logf_info("Generating trees ..");
 	event_fire( EVENT_LOCKING_PROGRESS, NULL );
-	for( int x = 64; x < set->max[0]*set->root - 64; x+=10 )
+	for( int x = 64; x < set->max[0]*set->root - 64; x+=10 ){
+	/*	if( x%32 == 0 ){
+			logf_info("Compressing");
+			event_fire( EVENT_LOCKING_PROGRESS, NULL );
+			chunkset_force_compress(set);
+		}*/
+	#pragma omp parallel for
 	for( int z = 64; z < set->max[2]*set->root - 64; z+=10 ){
 
 		float hz = 0.5;
@@ -95,7 +101,7 @@ void chunkset_gen_trees( struct ChunkSet* set){
 		float var_y = noise_simplex( x*hz, 128, 	z*hz );
 		chunkset_gen_tree( set, x + 5*var_x, z + 5*var_y );
 		
-	}
+	}}
 	logf_info("%i trees generated", trees);
 }
 
@@ -222,6 +228,7 @@ void chunkset_gen( struct ChunkSet* set )
 
 		chunk_close_rw(c);
 		chunk_compress(c);
+		
 	}
 
 	chunkset_gen_trees( set );

@@ -195,8 +195,9 @@ void chunk_make_mesh(
 			nc[i] = *set.null_chunk;
 		else{
 			struct ChunkMD *_c = &set.chunks[ flatten3( cvec, set.max_bitw )];
-			chunk_touch_ro( _c );
+			chunk_open_ro( _c );
 			nc[i] = *_c;
+			chunk_close_ro( _c );
 		}
 		cvec[i]--;
 	}
@@ -327,8 +328,9 @@ void chunk_make_mask(
 			nc[i] = *set.null_chunk;
 		else{
 			struct ChunkMD *_c = &set.chunks[ flatten3( cvec, set.max_bitw )];
-			chunk_touch_ro( _c );
+			chunk_open_ro( _c );
 			nc[i] = *_c;
+			chunk_close_ro( _c );
 		}
 		cvec[i]--;
 	}
@@ -473,8 +475,9 @@ void chunk_make_splatlist2( // UNUSED
 			nc[i] = *set.null_chunk;
 		else{
 			struct ChunkMD *_c = &set.chunks[ flatten3( cvec, set.max_bitw )];
-			chunk_touch_ro( _c );
+			chunk_open_ro( _c );
 			nc[i] = *_c;
+			chunk_close_ro( _c );
 		}
 		cvec[i]--;
 	}

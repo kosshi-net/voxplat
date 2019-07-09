@@ -24,10 +24,10 @@ Voxel chunkset_edit_read(
 	//if( ci > set->count ) return 0;
 	struct ChunkMD *c = &set->chunks[ ci ];
 
-	//chunk_open_ro(c);
-	chunk_touch_ro(c);
-	Voxel v = c->voxels[ flatten1( voxel_vec, set->root_bitw ) ];
-	//chunk_close_ro(c);
+	chunk_open_ro(c);
+	Voxel v = c->voxels[ flatten1( voxel_vec, set->root_bitw ) ];;
+	chunk_close_ro(c);
+	
 	return v;
 }
 

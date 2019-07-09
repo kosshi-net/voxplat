@@ -153,3 +153,77 @@ uint32_t chunkset_mesher_simd(
 
 	logf_info( "Took %.2f seconds", ctx_time()-t );
 */
+
+
+
+void chunkset_clear_import( struct ChunkSet *set )
+{
+	logf_info( "Clearing" );
+	uint32_t num_voxels = set->root * set->root * set->root;
+	uint32_t i = 0;
+
+	Voxel *buffer = mem_calloc( num_voxels * sizeof(Voxel) );
+
+	FILE *fptr;
+	fptr = fopen("default.bin","rb");
+
+	if( fptr == NULL ) panic();
+
+	char header[] = "VOXPLAT0000";
+
+	fread(buffer, sizeof(header), 1, fptr);
+
+
+	uint16_t vec[3];
+	for( vec[2] = 0; vec[2] < set->max[2]; vec[2]++  )
+	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
+	for( vec[0] = 0; vec[0] < set->max[0]; vec[0]++  )
+	{
+
+		struct ChunkMD *c = &set->chunks[i];
+
+		pthread_mutex_init(&c->mutex, NULL);
+
+		c->lod = -1;
+		c->last_access = ctx_time();
+		c->count = num_voxels;
+
+		uint32_t buffer_index = 0;
+		while(1){
+			fread( buffer+buffer_index, 2, 1, fptr );
+
+			buffer_index+=2;
+
+			if( buffer[buffer_index-2] == 0 ) break;
+
+			// Read two bytes to buffer
+			// If null null, write
+		}
+
+		c->rle = mem_alloc( buffer_index );
+
+		memcpy( c->rle, buffer, buffer_index );
+		memcpy( c->offset, vec, 3*sizeof(uint16_t) );
+
+		c->dirty = 1;
+		
+		c->gl_vbo =  0;
+		i++;
+
+	}
+	fclose(fptr);
+
+	mem_free(buffer);
+	// Nullchunk
+	set->null_chunk = mem_calloc(sizeof(struct ChunkMD));
+	struct ChunkMD *c = set->null_chunk;
+	c->last_access = ctx_time();
+	c->count = num_voxels;
+	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+
+	// Prepare rle lib");
+	mem_free( rle_compress(c->voxels, num_voxels) );
+
+
+	logf_info("Imported");
+}

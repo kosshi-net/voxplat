@@ -10,10 +10,8 @@
 #include <pthread.h>
 
 // Alloc wrapper, keeps track of memory usage
-// Todo: your own malloc
 
 #define ALLOC_TABLE_SIZE (1024*512)
-#define MAX_DYNAMIC_BYTES (1024*1024*1024*(size_t)4)
 
 pthread_mutex_t mem_mtx = PTHREAD_MUTEX_INITIALIZER;
 
@@ -29,7 +27,6 @@ int at_index = 0;
 
 // total allocated, just for debugging
 size_t total_bytes = 0;
-
 
 
 
@@ -77,114 +74,90 @@ void mem_block_print_debug(){
 }
 
 
+void integrity_check(char*source){
+
+	struct MemoryNode *node = mem;
+
+	int last_was_free = node->free;
+
+	while( node->next ){
+
+		if( last_was_free && node->free ){
+			printf("Multiple free blocks a row %s\n", source);
+			exit(1);
+		}
+		last_was_free = node->free;
+
+		if( node->next->prev != node ) {
+			printf("Bad links %s\n", source);
+			printf("me %p\n", node);
+			printf("me->next->prev %p\n", node->next->prev);
+			exit(1);
+		}
+
+		node = node->next;
+
+	}
+
+}
+
+
 
 void *mem_block_alloc(size_t bytes){
 
-	// Aligment
-	if( bytes % HEADSIZE != 0 )
-		bytes += HEADSIZE - ( bytes % HEADSIZE );
+	int align = HEADSIZE-1;
+	bytes = (bytes + align) &~ align;
 
 	struct MemoryNode *best = NULL;
 	struct MemoryNode *node = mem;
 
-	// Find the smallest fitting block, and name it best
-	while(1){
-		if( node->free == 0 || node->size < bytes+HEADSIZE ) {
-			goto next;
-		}
+	do { // Find the smallest fitting block
+		if( node->free && node->size >= bytes  
+		&&  (!best || node->size < best->size )
+		) 	best = node;
+	} while( (node=node->next) );
 
-		if( !best ) 
-			best = node;
-		else if ( node->size < best->size ) 
-			best = node;
-		
-		next:
-
-		if( node->next == NULL ) 
-			break;
-		node = node->next;
-	}
-
-	if(best == NULL) {
-		printf("Cannot allocate\n");
-		mem_block_print_debug();
-		printf("Cannot allocate\n");
-		return NULL;
-	}
-
-	// Is there enough room to split this node?
-	// Smallest allocatable block is HEADSIZE, add that
-	if( best->size < bytes+HEADSIZE+HEADSIZE ){
-		best->free = 0;
-		return best+1;
-	}
-
-	// Split the node
-
+	if(best == NULL) return NULL;
+	best->free = 0;
+	// if not enough room to split the node
+	if( best->size < bytes+HEADSIZE+HEADSIZE ) return best+1;
+	// Create new node
 	size_t old_size = best->size;
 	best->size = bytes;
-	best->free = 0;
-
-	// Create a new node
 	struct MemoryNode *new = best + (bytes / HEADSIZE) + 1;
-
 	new->prev = best;
 	new->next = best->next;
-	best->next = new;
-
+	if(new->next) new->next->prev = new;
 	new->size = old_size - best->size - HEADSIZE;
+	best->next = new;
 	new->free = 1;
-
-	//memset( (void*)(best+1), 0x00, best->size );
 
 	return best + 1;
 }
 
-
-void mem_block_free(void *block){
-	struct MemoryNode *node = (void*)block - HEADSIZE;
-
+void mem_block_free(void *address){
+	struct MemoryNode *node = address-HEADSIZE;
 	node->free = 1;
 
-	// Jump to the first free node in the chain
-	while( node->prev && node->prev->free == 1 ){
-		node = node->prev;
-	}
-	// Merge all the next free nodes
-	while( node->next && node->next->free == 1 ){
+	if( node->prev && node->prev->free ) node = node->prev;	
 
+	while( node->next && node->next->free ){ // Merge all the next free nodes.
 		node->size += node->next->size + HEADSIZE;
 
 		struct MemoryNode *del = node->next;
 		node->next = del->next;
 
-		if(del->next)
-			del->next->prev = node;
+		if(node->next) node->next->prev = node;
 	}
-
-
-}
-
-
-void command_listdebug( int argc, char **argv ){
-	mem_block_print_debug();
 }
 
 int mem_init(size_t heap_size){
-	shell_bind_command("mem_list", 		&command_listdebug);
-
-	printf("Init memory\n");
-	printf("Head size %li\n", HEADSIZE);
-
 	mem = malloc( heap_size );
-
 	struct MemoryNode *mem_block_head = mem;
-
 	mem_block_head->prev = NULL;
 	mem_block_head->next = NULL;
 	mem_block_head->size = heap_size - HEADSIZE;
 	mem_block_head->free = 1;
-
 	return 0;
 }
 
@@ -217,19 +190,14 @@ void* _mem_alloc( size_t bytes, char*label ){
 		logf_error( "Allocation failure! Dynamic fragment count exceeded!" );
 		panic();
 	}
-	if( total_bytes + bytes > MAX_DYNAMIC_BYTES  ){
-		logf_error( "Allocation failure! Dynamic memory limit exceeded!" );
-		panic();
-	}
 
 	//void* p = malloc( bytes );
 	void* p = mem_block_alloc(bytes);
-	memset( p, 0, bytes );
-
 	if( p == NULL  ) {
 		logf_error( "Allocation failure! %lu b %s", bytes, label  );
 		panic();
 	}
+
 	alloc_table[at_index].p = p;
 	alloc_table[at_index].size = bytes;
 	alloc_table[at_index].label = label;
@@ -248,20 +216,14 @@ void* _mem_calloc( size_t bytes, char*label ){
 		logf_error( "Allocation failure! Dynamic fragment count exceeded!" );
 		panic();
 	}
-	if( total_bytes + bytes > MAX_DYNAMIC_BYTES  ){
-		logf_error( "Allocation failure! Dynamic memory limit exceeded!" );
-		panic();
-	}
-	
 	//void* p = calloc( bytes, 1 );
 	//void* p = malloc( bytes );
 	void* p = mem_block_alloc(bytes);
-	memset( p, 0, bytes );
-
 	if( p == NULL  ) {
 		logf_error( "Allocation failure! %lu b %s", bytes, label  );
 		panic();
 	}
+	memset( p, 0, bytes );
 
 	alloc_table[at_index].p = p;
 	alloc_table[at_index].size = bytes;

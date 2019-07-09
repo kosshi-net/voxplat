@@ -36,10 +36,11 @@ struct ChunkSet {
 // Chunk MetaData
 struct ChunkMD {
 	
-	pthread_mutex_t mutex;
+	pthread_mutex_t mutex_read;
+	pthread_mutex_t mutex_write;
+	uint32_t readers;		// num threads are reading the chunk (UNUSED)
 
 	uint32_t last_access;	// ctx_time()
-	uint32_t readers;		// num threads are reading the chunk (UNUSED)
 	uint32_t count;			// Count of voxels
 	uint16_t offset[3];		// In chunks
 	Voxel  *voxels;			
@@ -162,7 +163,7 @@ void chunkset_clear_import( struct ChunkSet* );
 void chunkset_manage( struct ChunkSet* );
 
 void chunk_open_ro(  struct ChunkMD* );
-void chunk_touch_ro(  struct ChunkMD* );
+//void chunk_touch_ro(  struct ChunkMD* );
 void chunk_open_rw(  struct ChunkMD* );
 void chunk_close_ro( struct ChunkMD* );
 void chunk_close_rw( struct ChunkMD* );
@@ -171,6 +172,8 @@ Voxel voxel_read( struct ChunkSet*, uint32_t*  );
 void  voxel_write( struct ChunkSet*, uint32_t*, Voxel );
 
 void chunk_compress(struct ChunkMD *c);
+
+void chunkset_force_compress( struct ChunkSet* );
 
 // Potentially globally useful helpers
 uint32_t flatten3( const uint16_t* l, const uint8_t* b );

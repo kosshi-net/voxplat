@@ -17,15 +17,9 @@ size_t parse_num(char *c){
 	size_t num = 0;
 	while(*c){
 		switch(*c){
-			case '0':
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
+			case '0': case '1': case '2':
+			case '3': case '4': case '5':
+			case '6': case '7': case '8':
 			case '9':
 				num = num * 10 + (*c++ - '0');
 				break;
@@ -48,24 +42,26 @@ size_t parse_num(char *c){
 	look_for_null:
 	if( *c == '\0' ) return num;
 	return 0;
-
 }
+
 
 
 void cfg_init( int argc, char **argv ){
 
 	// Set defaults and stuff
 	config.chunk_size = 6;
-	config.world_size[0] = 5;
-	config.world_size[1] = 2;
-	config.world_size[2] = 5;
+	//config.world_size[0] = 0;
+	//config.world_size[1] = 0;
+	//config.world_size[2] = 0;
+
 	config.opengl_compat = 0;
 	config.opengl_debug = 0;
 
-	uint8_t custom_world = 0;
 
 	config.heap = parse_num( "1G" );
 
+	uint32_t default_chunk_size = 64;
+	uint32_t default_world_size[] = { 2048, 256, 2048 };
 
 	// THIS IS SO UGLY
 	for (int i = 1; i < argc; ++i)
@@ -99,12 +95,7 @@ void cfg_init( int argc, char **argv ){
 				exit(1);
 			}
 
-			if(custom_world){
-				printf("Please, set chunk_size before world_size\n");
-				exit(1);
-			}
-
-			config.chunk_size = ctz( parse_num(argv[++i]) );
+			default_chunk_size = parse_num(argv[++i]);
 
 
 		} else if (
@@ -116,15 +107,10 @@ void cfg_init( int argc, char **argv ){
 				exit(1);
 			}
 
-			uint32_t x = parse_num(argv[++i]) / (1<<config.chunk_size);
-			uint32_t y = parse_num(argv[++i]) / (1<<config.chunk_size);
-			uint32_t z = parse_num(argv[++i]) / (1<<config.chunk_size);
+			default_world_size[0] = parse_num(argv[++i]);
+			default_world_size[1] = parse_num(argv[++i]);
+			default_world_size[2] = parse_num(argv[++i]);
 
-			config.world_size[0] = ctz(x);
-			config.world_size[1] = ctz(y);
-			config.world_size[2] = ctz(z);
-
-			custom_world++;
 
 		} else if (
 			strcmp( arg, "--help" ) == 0
@@ -163,6 +149,16 @@ void cfg_init( int argc, char **argv ){
 
 
 	}
+
+
+	config.chunk_size = ctz( default_chunk_size );
+
+	uint32_t x = default_world_size[0] / (1<<config.chunk_size);
+	uint32_t y = default_world_size[1] / (1<<config.chunk_size);
+	uint32_t z = default_world_size[2] / (1<<config.chunk_size);
+	config.world_size[0] = ctz(x);
+	config.world_size[1] = ctz(y);
+	config.world_size[2] = ctz(z);
 
 
 }

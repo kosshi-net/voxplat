@@ -83,17 +83,24 @@ void chunkset_clear( struct ChunkSet *set )
 	uint32_t num_voxels = set->root * set->root * set->root;
 	uint32_t i = 0;
 	uint16_t vec[3];
+
+
+	// Nullchunk
+	
+	set->null_chunk = mem_calloc(sizeof(struct ChunkMD));
+	struct ChunkMD *c = set->null_chunk;
+	c->last_access = ctx_time();
+	c->count = num_voxels;
+	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+
 	for( vec[2] = 0; vec[2] < set->max[2]; vec[2]++  )
 	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
 	for( vec[0] = 0; vec[0] < set->max[0]; vec[0]++  )
 	{
-
-		//uint32_t i = flatten3( vec, set->max_bitw );
-//		logf_info( "Clearing chunk %iu", i );
-
 		struct ChunkMD *c = &set->chunks[i];
 
-		pthread_mutex_init(&c->mutex, NULL);
+		pthread_mutex_init(&c->mutex_read, NULL);
+		pthread_mutex_init(&c->mutex_write, NULL);
 
 		c->lod = -1;
 		c->last_access = ctx_time();
@@ -108,93 +115,7 @@ void chunkset_clear( struct ChunkSet *set )
 		chunk_compress(c);
 
 		i++;
-
 	}
-
-	// Nullchunk
-	
-	set->null_chunk = mem_calloc(sizeof(struct ChunkMD));
-	struct ChunkMD *c = set->null_chunk;
-	c->last_access = ctx_time();
-	c->count = num_voxels;
-	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
-
-	mem_free( rle_compress(c->voxels, num_voxels) );
-
-	//mem_calloc( 0 );
-
-}
-
-void chunkset_clear_import( struct ChunkSet *set )
-{
-	logf_info( "Clearing" );
-	uint32_t num_voxels = set->root * set->root * set->root;
-	uint32_t i = 0;
-
-	Voxel *buffer = mem_calloc( num_voxels * sizeof(Voxel) );
-
-	FILE *fptr;
-	fptr = fopen("default.bin","rb");
-
-	if( fptr == NULL ) panic();
-
-	char header[] = "VOXPLAT0000";
-
-	fread(buffer, sizeof(header), 1, fptr);
-
-
-	uint16_t vec[3];
-	for( vec[2] = 0; vec[2] < set->max[2]; vec[2]++  )
-	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
-	for( vec[0] = 0; vec[0] < set->max[0]; vec[0]++  )
-	{
-
-		struct ChunkMD *c = &set->chunks[i];
-
-		pthread_mutex_init(&c->mutex, NULL);
-
-		c->lod = -1;
-		c->last_access = ctx_time();
-		c->count = num_voxels;
-
-		uint32_t buffer_index = 0;
-		while(1){
-			fread( buffer+buffer_index, 2, 1, fptr );
-
-			buffer_index+=2;
-
-			if( buffer[buffer_index-2] == 0 ) break;
-
-			// Read two bytes to buffer
-			// If null null, write
-		}
-
-		c->rle = mem_alloc( buffer_index );
-
-		memcpy( c->rle, buffer, buffer_index );
-		memcpy( c->offset, vec, 3*sizeof(uint16_t) );
-
-		c->dirty = 1;
-		
-		c->gl_vbo =  0;
-		i++;
-
-	}
-	fclose(fptr);
-
-	mem_free(buffer);
-	// Nullchunk
-	set->null_chunk = mem_calloc(sizeof(struct ChunkMD));
-	struct ChunkMD *c = set->null_chunk;
-	c->last_access = ctx_time();
-	c->count = num_voxels;
-	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
-
-	// Prepare rle lib");
-	mem_free( rle_compress(c->voxels, num_voxels) );
-
-
-	logf_info("Imported");
 }
 
 // This shadow stuff is very work in progress and ugly!
@@ -345,32 +266,21 @@ void chunkset_create_shadow_map(
 }
 
 
-
-
-
 void chunk_touch_ro( struct ChunkMD *c  )
 {
-	chunk_open_ro(c);
+	logf_warn("RO Touch is depricated. Segfault!");
 }
 
 
-void chunk_open_ro( struct ChunkMD *c )
-{
-//	c->readers++;
+void chunk_decompress( struct ChunkMD *c ){
+
+	if( c->voxels != NULL ) return;
 	
-	c->last_access = (uint32_t)ctx_time();
-	if( c->voxels != NULL ) 
-		return;
+	if ( c->rle == NULL  ){
 
-	pthread_mutex_lock( &c->mutex ); // Lock the chunk for decompression
-
-	if( c->voxels != NULL ) { // DId another thread decompress it already?
-		pthread_mutex_unlock( &c->mutex );
-		return;
-	} else if ( c->rle == NULL  ){
-		// Unallocated, throw an error and exit!
-		logf_error("Unimplemented: Can not read unallocated chunk");
+		logf_error("Can not read unallocated chunk");
 		panic();
+
 	}else{
 		// Uncompress chunk!
 		
@@ -378,33 +288,67 @@ void chunk_open_ro( struct ChunkMD *c )
 		mem_free(c->rle);
 		c->rle = NULL;
 		
-
-		//c->voxels = c->rle;
-		//c->rle = NULL;
-
-		pthread_mutex_unlock( &c->mutex );
 		return;
 	}
 }
 
+
+void chunk_open_ro( struct ChunkMD *c )
+{
+	pthread_mutex_lock( &c->mutex_read ); 
+	c->last_access = (uint32_t)ctx_time();
+
+	c->readers++;
+
+	// rw lock
+	if( c->readers == 1 ) {
+		pthread_mutex_lock( &c->mutex_write );
+	}
+	
+	chunk_decompress( c );
+
+	pthread_mutex_unlock( &c->mutex_read );
+}
+
 void chunk_close_ro( struct ChunkMD *c )
 {
-//	c->readers--;
+	pthread_mutex_lock( &c->mutex_read ); 
+	c->readers--;
+	if(	c->readers == 0 ) {
+		pthread_mutex_unlock( &c->mutex_write ); 
+		//chunk_compress( c );
+	}
+	pthread_mutex_unlock( &c->mutex_read ); 
+
 //	c->last_access = (uint32_t)ctx_time();
 }
 
 
-
 void chunk_open_rw( struct ChunkMD *c )
 {
-	chunk_open_ro(c);
-	// Unimplemented
+	pthread_mutex_lock( &c->mutex_write ); 
+	chunk_decompress( c );
 }
 
 void chunk_close_rw( struct ChunkMD *c )
 {
-	chunk_close_ro(c);
-	// Unimplemented
+	pthread_mutex_unlock( &c->mutex_write );
+}
+
+
+
+void chunkset_force_compress( struct ChunkSet* set ){
+
+	for (int i = 0; i < set->count; ++i)
+	{
+		struct ChunkMD *c = set->chunks+i;
+
+		chunk_open_rw(c);
+		chunk_compress(c);
+		chunk_close_rw(c);
+
+	}
+
 }
 
 
@@ -516,7 +460,6 @@ int voxel_visible(
 	uint16_t *vec,
 	uint32_t vi
 ){
-
 	if( !voxel_set_safe( set,c,vec,vi ) ) {
 		return !(vec[1] == 0);
 	}
@@ -529,16 +472,13 @@ int voxel_visible(
 
 
 void chunk_compress(struct ChunkMD *c){
-
-	pthread_mutex_lock( &c->mutex ); // Fix this
-
 	void *vxl = c->voxels;
 	c->voxels = NULL;
 
 	c->rle = rle_compress( vxl, c->count  );
 	mem_free( vxl );
 
-	pthread_mutex_unlock( &c->mutex );
+	chunk_close_rw( c );
 }
 
 
@@ -563,7 +503,7 @@ void chunkset_manage(
 
 	#pragma omp parallel for
 	for( int i = 0; i < set->count; i++ ){
-		if(meshed_count>64) continue;
+		if(meshed_count>8) continue;
 
 		int omp_id = omp_get_thread_num();
 
@@ -601,7 +541,9 @@ void chunkset_manage(
 		) {
 			if( c->rle == NULL 
 			&&	c->last_access+1.0 < ctx_time() ){
+				chunk_open_rw(c);
 				chunk_compress(c);
+				chunk_close_rw(c);
 				meshed_count++;
 			}
 			continue;
