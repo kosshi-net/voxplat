@@ -81,7 +81,7 @@ void chunkset_gen_trees( struct ChunkSet* set){
 		chunkset_gen_tree( set, x + 5*var_x, z + 5*var_y );
 		
 	}}
-	logf_info("%i trees generated", trees);
+	logf_info("%i trees planted", trees);
 }
 
 

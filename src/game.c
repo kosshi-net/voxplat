@@ -104,6 +104,8 @@ void _ss2ws(
 }
 
 
+// GOD DAMMIT
+
 float sensitivity = 0.15;
 void command_sensitivity( int argc, char **argv ){
 	if(argc == 2){
@@ -114,8 +116,7 @@ void command_sensitivity( int argc, char **argv ){
 	logf_info("%f", sensitivity);
 }
 
-//float speed = 75;
-float speed = 500;
+float speed = 75;
 void command_speed( int argc, char **argv ){
 	if(argc == 2){
 		float temp = atof(argv[1]);
@@ -146,8 +147,7 @@ void command_held_voxel( int argc, char **argv ){
 	logf_info("%i", held_voxel);
 }
 
-//uint32_t draw_distance = 1024*2;
-uint32_t draw_distance = 1024*4;
+uint32_t draw_distance = 1024*2;
 void command_draw_distance( int argc, char **argv ){
 	if(argc == 2){
 		float temp = atoi(argv[1]);
@@ -172,34 +172,6 @@ void command_random_color( int argc, char **argv ){
 	logf_info("%i", random_color);
 }
 
-void command_export( int argc, char **argv ){
-	FILE *fptr;
-	fptr = fopen("default.bin","wb");
-
-	char magic = (char)137;
-
-	//char *mid = (char*)0xDEAD;
-
-	fwrite( &magic, 1, 1, fptr );
-	fwrite( "VOXPLAT", 7, 1, fptr );
-	fwrite( &set->root_bitw, 1, 1, fptr );
-	fwrite( set->max_bitw, 3, 1, fptr );
-
-	for (uint32_t i = 0; i < set->count; ++i){
-		struct ChunkMD *c = &set->chunks[i];
-
-		uint32_t j = 0;
-		for(; c->rle[j]; j+=2);
-		j+=2;
-		fwrite( c->rle, j, 1, fptr );
-		//fwrite( "\0\0", 4, 1, fptr );
-	}
-
-	fwrite( set->shadow_map, set->shadow_map_length, 1, fptr );
-
-	fclose(fptr);
-}
-
 void command_chunkset_edit( int argc, char **argv ){
 	if( argc == 6 && strcmp(argv[1], "set") == 0 ){
 		uint32_t ws[3];
@@ -220,47 +192,30 @@ const char *renderer;
 
 int game_init(){
 
-	shell_bind_command("sensitivity", 		&command_sensitivity);
-	shell_bind_command("speed", 			&command_speed);
-	shell_bind_command("chunkset_edit", 	&command_chunkset_edit);
-	shell_bind_command("toggle_chunk_aabb",	&command_show_chunks);
-	shell_bind_command("toggle_random_color",&command_random_color);
-	shell_bind_command("toggle_lod",		&command_debug_mark_near);
-	shell_bind_command("color",		 		&command_held_voxel);
-	shell_bind_command("export", 			&command_export);
-	shell_bind_command("brush_size", 		&command_brush_size);
-	shell_bind_command("draw_distance",		&command_draw_distance);
+	shell_bind_command("sensitivity", 			&command_sensitivity);
+	shell_bind_command("speed", 				&command_speed);
+
+	shell_bind_command("chunkset_edit", 		&command_chunkset_edit);
+
+	shell_bind_command("chunk_borders",			&command_show_chunks);
+	shell_bind_command("lod",					&command_debug_mark_near);
+
+	shell_bind_command("brush_size", 			&command_brush_size);
+	shell_bind_command("brush_color",		 	&command_held_voxel);
+	shell_bind_command("brush_random_color",	&command_random_color);
+
+	shell_bind_command("draw_distance",			&command_draw_distance);
 
 	gfx_vsplat_init();
 	gfx_vmesh_init();
 
-	/* 
-		Define the size of the world and chunks in power of twos.
-		5 = 32
-		6 = 64
-		7 = 128
-		etc
-
-		Good options:
-		6, (uint8_t[]){5,2,5} 	2048x256x2048 with 64 chunks
-		6, (uint8_t[]){6,2,6} 	4096x256x4096 with 64 chunks
-		7, (uint8_t[]){5,1,5} 	4096x256x4096 with 128 chunks
-	*/
-	//set = chunkset_create( 
-	//	6, (uint8_t[]){5,2,5}
-	//);
-	
+	// Create the world
 	set = chunkset_create( 
 		cfg_get()->chunk_size, cfg_get()->world_size
 	);
-
-
-	//chunkset_clear_import( set );
-	chunkset_clear( set );
+	chunkset_clear( set ); 
 	chunkset_create_shadow_map( set );
 	chunkset_gen( set );
-
-	//chunkset_force_compress( set );
 	
 	cam.location[1] = 512;
 	cam.fov =  90.0f;

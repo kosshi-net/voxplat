@@ -37,6 +37,16 @@ void log_init(){
 
 }
 
+void log_clear(){
+
+	log_last = 0;
+	log_length = 0;	
+
+	memset( log_history, LOG_LINE_LENGTH * LOG_LINES, sizeof(char) );
+	memset( log_history_level,LOG_LINES, sizeof(uint8_t) );
+
+}
+
 void log_history_push(Event level, const char*str){
 
 	int s = 0; // start
@@ -45,9 +55,8 @@ void log_history_push(Event level, const char*str){
 
 	for( int i = 0; 1; i++  ){
 		
-		if( !(str[i] == '\n' || str[i]=='\0') ){
+		if( !(str[i] == '\n' || str[i]=='\0') )
 			continue;
-		}
 		
 		int len = i - s;
 
@@ -64,11 +73,8 @@ void log_history_push(Event level, const char*str){
 
 		memcpy( log_history+_i, &str[s], len+1 );
 		log_history[_i+len] = '\0';
-
 		log_last++;
-
 		log_last %= LOG_LINES;
-
 		log_length++;
 
 		s = i+1;
@@ -117,7 +123,7 @@ void _log_error( char*msg ){
 	printf( "%s\n", msg );
 }
 
-void (*callbacks[MAX_EVENTS][MAX_BOUND_CALLBACKS])(void*) = { 0 };
+void (*callbacks[MAX_EVENTS][MAX_BOUND_CALLBACKS])(void*) = {{ 0 }};
 
 
 void event_init(){

@@ -217,9 +217,6 @@ void command_memory_status( int argc, char **argv ){
 			chart[i] = (node->free) ? '-' : '|';
 		}
 
-		chart[start] = (node->free) ? '-' : '*';
-		chart[stop] = (node->free) ? '-' : '*';
-
 	} while( (node=node->prev) );
 
 

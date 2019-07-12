@@ -68,4 +68,6 @@ void _log_error	( char* );
 
 void panic(void);
 
+void log_clear(void);
+
 #endif

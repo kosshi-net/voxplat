@@ -30,7 +30,7 @@
 struct ChunkSet * 
 chunkset_create( uint8_t root_bitw, uint8_t max_bitw[] )
 {
-	
+
 	uint16_t max[3] = {
 		1 << max_bitw[0],
 		1 << max_bitw[1],

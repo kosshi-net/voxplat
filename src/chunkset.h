@@ -37,20 +37,21 @@ struct ChunkSet {
 // this is getting bloated, figure something out 
 struct ChunkMD {
 	
+	// R/W Lock implementation (even tho pthread has one ...)
 	pthread_mutex_t mutex_read;
 	pthread_mutex_t mutex_write;
-	uint16_t readers;		// num threads are reading the chunk (UNUSED)
+	uint16_t readers;
 
-	float last_access;	// ctx_time()
+	float last_access;		// ctx_time()
 	uint32_t count;			// Count of voxels (duplicated just for convinience...)
 	uint16_t offset[3];		// In chunks
 	Voxel  *voxels;			
 	Voxel  *rle;
 	
 	int8_t		lod;
-	uint8_t     dirty;				// Bool for geometry outdated
+	uint8_t     dirty;							// Bool for geometry outdated
 
-	void	   *gl_vbo_local;		// Temporary store for vbo data
+	void	   *gl_vbo_local;					// Temporary store for vbo data
 	uint8_t		gl_vbo_local_lod;
 	uint32_t	gl_vbo_local_items;
 	uint32_t	gl_vbo_local_segments[MAX_LOD_LEVEL];
@@ -127,6 +128,13 @@ struct ChunkMD {
  * 	Make sure everything works properly when chunk doenst anymore generate a 
  *  mesh (when all the voxels are removed)
  *   - Hacky fixed, clean up properly still to be done
+ */
+
+/*
+ * API Guidelines
+ * 
+ * Any function that takes a chunk, also should take the set
+ *
  */
 
 

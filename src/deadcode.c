@@ -314,3 +314,33 @@ void chunk_make_splatlist2( // UNUSED
 	return;
 }
 
+
+
+
+void command_export( int argc, char **argv ){
+	FILE *fptr;
+	fptr = fopen("default.bin","wb");
+
+	char magic = (char)137;
+
+	//char *mid = (char*)0xDEAD;
+
+	fwrite( &magic, 1, 1, fptr );
+	fwrite( "VOXPLAT", 7, 1, fptr );
+	fwrite( &set->root_bitw, 1, 1, fptr );
+	fwrite( set->max_bitw, 3, 1, fptr );
+
+	for (uint32_t i = 0; i < set->count; ++i){
+		struct ChunkMD *c = &set->chunks[i];
+
+		uint32_t j = 0;
+		for(; c->rle[j]; j+=2);
+		j+=2;
+		fwrite( c->rle, j, 1, fptr );
+		//fwrite( "\0\0", 4, 1, fptr );
+	}
+
+	fwrite( set->shadow_map, set->shadow_map_length, 1, fptr );
+
+	fclose(fptr);
+}

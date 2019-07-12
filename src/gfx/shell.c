@@ -46,7 +46,7 @@ void gfx_shell_exclusive_draw(){
 	
 	unsigned int log_length = log_hist_length();
 	
-	int max_rows = height / font_size;
+	int max_rows = height / font_size - 1;
 	 
 	uint8_t i = 0;
 	
@@ -54,7 +54,7 @@ void gfx_shell_exclusive_draw(){
 		max_rows = log_length;
 
 	int ln = 0;	
-	int h = ( -font_size - 5 ) + height % font_size;
+	int h = 0;
 	
 
 	float icolor[4] = { 1,1,1,1 };
