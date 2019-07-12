@@ -172,7 +172,8 @@ int ctx_input_place_block()
 {
 //	return ( glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT)== GLFW_PRESS );
 	if( place_event ) {
-		place_event = 0;
+		if( glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) != GLFW_PRESS )
+			place_event = 0;
 		return 1;
 	}
 	return 0;

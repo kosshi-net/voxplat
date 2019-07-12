@@ -26,7 +26,8 @@ void main(void) {
 
 	gl_FragDepth = vDepth;
 
-	float fog = pow(gl_FragDepth,0.7);
+	float fog_start = 256.0/u_far;
+	float fog = pow( max(gl_FragDepth-fog_start,0.0001), 0.5);
 
 	out_Color = vec4( mix( 
 		color, 

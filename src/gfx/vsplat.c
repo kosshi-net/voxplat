@@ -203,8 +203,20 @@ void gfx_vsplat_draw(
 			1<<(lod-1)
 		);
 
+/*
+		uint32_t start = c->gl_vbo_segments[lod-1];
+		if( lod == 3 )
+			//continue;
+			start = c->gl_vbo_segments[1]+c->gl_vbo_segments[2];
+*/
+		uint32_t start = 0;
+		for (int i = 1; i < lod; ++i)
+		{
+			start += c->gl_vbo_segments[i];
+		}
+
 		glDrawArrays( GL_POINTS, 
-			c->gl_vbo_segments[lod-1]/4, 
+			start/4, 
 			c->gl_vbo_segments[lod]  /4
 		);
 
@@ -212,14 +224,23 @@ void gfx_vsplat_draw(
 
 
 		skip_draw:
+		if(c->gl_vbo_local_items == 0 && c->gl_vbo ){
+			glDeleteBuffers( 1, &c->gl_vbo );
+			c->gl_vbo = 0;
+			//logf_info("Deleted buffer");
+
+			continue;
+		}
 
 		glBindVertexArray(0);
 		if( c->gl_vbo_local != NULL ){
 
 		
 			if( c->gl_vbo == 0  ) {
-				glGenVertexArrays(1, &c->gl_vao);
-				glBindVertexArray(c->gl_vao);
+				if( !c->gl_vao ){
+					glGenVertexArrays(1, &c->gl_vao);
+					glBindVertexArray(c->gl_vao);
+				}
 
 				glEnableVertexAttribArray(vsplat_shader_aVertex);
 				glEnableVertexAttribArray(vsplat_shader_aColor);
@@ -258,11 +279,12 @@ void gfx_vsplat_draw(
 			c->gl_vbo_lod = c->gl_vbo_local_lod;
 			c->gl_vbo_local = NULL;
 
-			c->gl_vbo_segments[0] = c->gl_vbo_local_segments[0];
-			c->gl_vbo_segments[1] = c->gl_vbo_local_segments[1];
-			c->gl_vbo_segments[2] = c->gl_vbo_local_segments[2];
-			c->gl_vbo_segments[3] = c->gl_vbo_local_segments[3];
-			
+			for (int i = 0; i < 8; ++i)
+			{
+				c->gl_vbo_segments[i] = c->gl_vbo_local_segments[i];
+			}
+
+
 		
 			if( c->gl_ibo_local != NULL ){
 			

@@ -56,8 +56,8 @@ typedef enum {
 const unsigned char* 	res_file(File);
 size_t					res_size(File);
 
-// malloc()s a properly sized null-terminated string from the blob
-// Remember to free() it yourself!
+// allocates a properly sized null-terminated string from the blob
+// Remember to free it yourself!
 char*	res_strcpy(File);
 
 // Example usage

@@ -227,3 +227,90 @@ void chunkset_clear_import( struct ChunkSet *set )
 
 	logf_info("Imported");
 }
+
+
+
+void chunk_make_splatlist2( // UNUSED
+	struct ChunkSet *setp,
+	struct ChunkMD *cp,
+	int16_t *geometry,
+	uint32_t*geometry_items,
+	Voxel *mask
+){
+	// Dereferense the structures for 20% speedup
+	struct ChunkSet set = *setp;		
+	struct ChunkMD c = *cp;
+
+	uint8_t lod = c.lod-1;
+
+	uint16_t cvec[3];
+	memcpy( cvec, c.offset, sizeof(cvec) ); 
+
+	struct ChunkMD nc[3];
+
+	for( int i = 0; i < 3; i++ ) {
+		cvec[i]++;
+		if( cvec[i]+1 > set.max[i]  )
+			nc[i] = *set.null_chunk;
+		else{
+			struct ChunkMD *_c = &set.chunks[ flatten3( cvec, set.max_bitw )];
+			chunk_open_ro( _c );
+			nc[i] = *_c;
+			chunk_close_ro( _c );
+		}
+		cvec[i]--;
+	}
+
+	uint16_t r = set.root-1;
+	uint16_t AC[3];
+	uint32_t Ai = 0;
+	for( AC[2] = 0; AC[2] < set.root; AC[2]++ )
+	for( AC[1] = 0; AC[1] < set.root; AC[1]++ )
+	for( AC[0] = 0; AC[0] < set.root; AC[0]++ )
+	{
+		Voxel A = c.voxels[Ai];
+		uint32_t shift = 0;
+		for( int i = 0; i < 3; i++ ){
+			Voxel B;
+			if( AC[i]+1 == set.root )
+				B = nc[i].voxels[ Ai - (r << shift) ];
+			else
+				B = c.voxels[ Ai + (1 << shift) ];
+
+			shift += set.root_bitw;
+
+			if ( !A == !B  ) continue;
+
+			// Face visible, store result
+			uint16_t MC[3];
+			memcpy( MC, AC, sizeof(MC) );
+			MC[i] += (A==0);
+			MC[0]>>=lod;
+			MC[1]>>=lod;
+			MC[2]>>=lod;
+			uint32_t Mi = flatten1( MC, set.root_bitw+1 );
+			mask[Mi] = A|B;
+		}
+		Ai++;
+	}
+	
+	uint32_t v = 0;
+	// Loop thru the mask
+	for( AC[2] = 0; AC[2] < set.root+1; AC[2]++ )
+	for( AC[1] = 0; AC[1] < set.root+1; AC[1]++ )
+	for( AC[0] = 0; AC[0] < set.root+1; AC[0]++ )
+	{
+		uint32_t Mi = flatten1( AC, set.root_bitw+1 );
+		if( mask[Mi] == 0 ) continue;
+
+		for( int j = 0; j < 3; j++  )
+			geometry[v++] = ((c.offset[j] << set.root_bitw) + (AC[j]<<lod));
+
+		geometry[v++] = mask[Mi];
+		mask[Mi] = 0;
+	}
+	*geometry_items = v;
+
+	return;
+}
+

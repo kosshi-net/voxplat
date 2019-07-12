@@ -4,8 +4,9 @@ A hybrid voxel rendering engine, written with C and OpenGL. The goal of this
 project was to make a engine capable of rendering a large amount of
 voxels on mid-tier graphics cards.
 
-8192x8192 area with over 100 000 trees, rendered at 170fps on Radeon RX 480 4GB
-![Pretty picture](https://i.imgur.com/tnNTgnH.jpg)
+8192x512x8192 map with over 120 000 trees, rendered at 130fps on Radeon RX 480. 128^3 chunks, 4.5 GB peak ram usage, FPS limited by draw calls.
+![Pretty picture](https://kosshi.net/u/jzn6y.png)
+![Pretty picture](https://kosshi.net/u/jzldm.png)
 
 ## Rendering method
 
@@ -14,18 +15,21 @@ testing in a fragment shader. This reduces the vertex count to just 1 per voxel,
 but with a somewhat slow fragment shader. This is a real probelm with nearby
 voxels, so hybrid rendering is used: meshes for nearby, splatting farther away.
 
+Engine implements SVO-like level of detail, with first level starting at 1024, 
+voxels away.
+
 ### Relevant
 This [Nvidia paper](http://www.jcgt.org/published/0007/03/04/) has a different, 
 more refined version of the splatting part.
 
 ### Work in progress!
-This my first large C project, there is a lot of code and a lot of it is ugly.
-Development is mostly halted for now, but not abandoned. 
+This is also my first large C project, there is a lot of code and a lot of it 
+is ugly and temporary. Especially the mesher. Don't look at the mesher.
 
 ### Launch options
-List of some launch options and their default values
+List of some launch options and their default values:
 
-``--heap 1G``
+``--heap 512M``
 
 How much memory to allocate. 
 You must adjust this for larger worlds.
@@ -48,7 +52,7 @@ Use OpenGL compatability mode. Might help if you have trouble running the engine
 - Standard meshed rendering for nearby voxels for additional effects and speed
 - Fast culler and mesher (a lot of it is still very WIP)
 	- 64^3 in 1-4 milliseconds singlethreaded on a Ryzen 1600 @ 3.8GHz
-- Barely noticeable level of detail (starts at 1024 voxels away)
+- Subtle level of detail (starts at 1024 voxels away)
 - Block placement and removal
 - Completetly fake shadows and ambient occlusion
 - Custom world generator for pretty screenshots

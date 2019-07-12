@@ -24,9 +24,9 @@ Voxel chunkset_edit_read(
 	//if( ci > set->count ) return 0;
 	struct ChunkMD *c = &set->chunks[ ci ];
 
-	chunk_open_ro(c);
+	chunk_open_ro(set, c);
 	Voxel v = c->voxels[ flatten1( voxel_vec, set->root_bitw ) ];;
-	chunk_close_ro(c);
+	chunk_close_ro(set, c);
 	
 	return v;
 }
@@ -55,7 +55,7 @@ void chunkset_edit_write(
 	//if( ci > set->count ) return;
 	struct ChunkMD *c = &set->chunks[ ci ];
 
-	chunk_open_rw(c);
+	chunk_open_rw(set, c);
 	Voxel *v = &c->voxels[ flatten1( voxel_vec, set->root_bitw ) ];
 	if( *v != voxel  ) {
 		*v = voxel;
@@ -78,7 +78,7 @@ void chunkset_edit_write(
 		}
 
 	}
-	chunk_close_rw(c);
+	chunk_close_rw(set, c);
 }
 
 

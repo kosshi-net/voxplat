@@ -114,7 +114,8 @@ void command_sensitivity( int argc, char **argv ){
 	logf_info("%f", sensitivity);
 }
 
-float speed = 75;
+//float speed = 75;
+float speed = 500;
 void command_speed( int argc, char **argv ){
 	if(argc == 2){
 		float temp = atof(argv[1]);
@@ -145,6 +146,16 @@ void command_held_voxel( int argc, char **argv ){
 	logf_info("%i", held_voxel);
 }
 
+//uint32_t draw_distance = 1024*2;
+uint32_t draw_distance = 1024*4;
+void command_draw_distance( int argc, char **argv ){
+	if(argc == 2){
+		float temp = atoi(argv[1]);
+		draw_distance = temp;
+	}
+	logf_info("%i", draw_distance);
+}
+
 uint8_t brush_size = 5;
 void command_brush_size( int argc, char **argv ){
 	if(argc == 2){
@@ -154,8 +165,11 @@ void command_brush_size( int argc, char **argv ){
 	logf_info("%i", brush_size);
 }
 
-void command_memory_debug( int argc, char **argv ){
-	mem_log_debug();
+
+int random_color = 0;
+void command_random_color( int argc, char **argv ){
+	random_color = !random_color;
+	logf_info("%i", random_color);
 }
 
 void command_export( int argc, char **argv ){
@@ -210,11 +224,12 @@ int game_init(){
 	shell_bind_command("speed", 			&command_speed);
 	shell_bind_command("chunkset_edit", 	&command_chunkset_edit);
 	shell_bind_command("toggle_chunk_aabb",	&command_show_chunks);
+	shell_bind_command("toggle_random_color",&command_random_color);
 	shell_bind_command("toggle_lod",		&command_debug_mark_near);
 	shell_bind_command("color",		 		&command_held_voxel);
-	shell_bind_command("memory_debug", 		&command_memory_debug);
 	shell_bind_command("export", 			&command_export);
 	shell_bind_command("brush_size", 		&command_brush_size);
+	shell_bind_command("draw_distance",		&command_draw_distance);
 
 	gfx_vsplat_init();
 	gfx_vmesh_init();
@@ -244,6 +259,8 @@ int game_init(){
 	chunkset_clear( set );
 	chunkset_create_shadow_map( set );
 	chunkset_gen( set );
+
+	//chunkset_force_compress( set );
 	
 	cam.location[1] = 512;
 	cam.fov =  90.0f;
@@ -278,6 +295,8 @@ void game_tick(){
 	//
 	// Camera position and matrices
 	//
+
+	cam.far_plane = draw_distance;
 
 	double cur_x, cur_y;
 	ctx_cursor_movement( &cur_x, &cur_y  );
@@ -379,9 +398,10 @@ void game_tick(){
 			if((distance > 1024.0)) c->lod = 2;
 
 			// Lod above 2 is broken atm
-			//if((distance > 1024.0)) c->lod = 3;
-			//if((distance > 2048.0)) c->lod = 3;
-			//if((distance > 4096.0)) c->lod = 4;
+			
+			if((distance > 1024.0*2)) c->lod = 3;
+			if((distance > 1024.0*4)) c->lod = 4;
+			if((distance > 1024.0*6)) c->lod = 5;
 			//if((distance > cam.far_plane)) c->lod = -1;
 		}
 		
@@ -389,10 +409,10 @@ void game_tick(){
 
 
 		if( c->gl_vbo == 0 && c->gl_vbo_local == 0) 				continue;
-		if( c->gl_vbo_local_items == 0 ) 							continue;
+		//if( c->gl_vbo_local_items == 0 ) 							continue;
 
 		// Frustum cull
-		if( distance > cam.far_plane ) 								continue;
+		if( distance > cam.far_plane+set->root )					continue;
 		if( !gfx_fcull(cam.frustum_planes, cwp, set->root*0.85) ) 	continue;
 
 		push:
@@ -472,6 +492,9 @@ void game_tick(){
 	//
 	// World editing 
 	//
+
+	if( random_color )
+		held_voxel = 63*noise_randf();
 	
 	int _break = ctx_input_break_block();
 	int _place  = ctx_input_place_block();
@@ -498,7 +521,10 @@ void game_tick(){
 			hitcoord,
 			normal
 		);
-		if( v2>0 && _break  ){
+		if( v2>0 && (_break||_place)  ){
+			if(_place)
+				for( int i = 0; i < 3; i++  )
+					hitcoord[i]+=normal[i];
 			uint32_t u[3];
 			for( u[0] = hitcoord[0]-brush_size; u[0] < hitcoord[0]+brush_size; u[0]++ )
 			for( u[1] = hitcoord[1]-brush_size; u[1] < hitcoord[1]+brush_size; u[1]++ )
@@ -509,17 +535,17 @@ void game_tick(){
 					_b[i] = (float)hitcoord[i];
 				}
 				if (glm_vec_distance(_a, _b) < brush_size){
-					chunkset_edit_write(set, u, 0);
+					chunkset_edit_write(set, u, _break ? 0 : held_voxel);
 					shadow_break_update(set, u);
 				}
 			}
 		}
-		else if( v2>0 && _place  ){
+	/*	else if( v2>0 && _place  ){
 			for( int i = 0; i < 3; i++  )
 				hitcoord[i]+=normal[i];
 			chunkset_edit_write(set, hitcoord, held_voxel);
 			shadow_place_update(set, hitcoord);
-		}
+		}*/
 	}
 
 	//

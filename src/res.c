@@ -27,10 +27,10 @@ size_t res_size(File file){
 // Allocates a null terminated string. UNALLOC YOURSELF!
 char* res_strcpy(File file){
 		
-	char * str = mem_alloc( res_size(file) );
+	char * str = mem_alloc( res_size(file)+1 );
 	
 	memcpy( str, res_file(file), res_size(file) );
-	str[ res_size(file) - 1 ] = '\0';
+	str[ res_size(file) ] = '\0';
 	
 	return str;
 }

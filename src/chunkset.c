@@ -24,7 +24,7 @@
 #include <omp.h>
 
 
-//#define DISABLE_SHADOWS 1
+//#define DISABLE_SHADOWS
 
 
 struct ChunkSet * 
@@ -92,6 +92,7 @@ void chunkset_clear( struct ChunkSet *set )
 	c->last_access = ctx_time();
 	c->count = num_voxels;
 	c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+	c->rle = rle_compress( c->voxels, c->count);
 
 	for( vec[2] = 0; vec[2] < set->max[2]; vec[2]++  )
 	for( vec[1] = 0; vec[1] < set->max[1]; vec[1]++  )
@@ -105,14 +106,18 @@ void chunkset_clear( struct ChunkSet *set )
 		c->lod = -1;
 		c->last_access = ctx_time();
 		c->count = num_voxels;
-		c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+
+
 		memcpy( c->offset, vec, 3*sizeof(uint16_t) );
 
 		c->dirty = 1;
 		
 		c->gl_vbo =  0;
 
-		chunk_compress(c);
+
+		//c->voxels = mem_calloc( num_voxels * sizeof(Voxel) );
+		//chunk_compress(c);
+		c->rle = set->null_chunk->rle;
 
 		i++;
 	}
@@ -271,7 +276,7 @@ void chunk_touch_ro( struct ChunkMD *c  )
 	logf_warn("RO Touch is depricated. Segfault!");
 }
 
-
+/*
 void chunk_decompress( struct ChunkMD *c ){
 
 	if( c->voxels != NULL ) return;
@@ -285,15 +290,15 @@ void chunk_decompress( struct ChunkMD *c ){
 		// Uncompress chunk!
 		
 		c->voxels = rle_decompress(c->rle);
-		mem_free(c->rle);
-		c->rle = NULL;
+		//mem_free(c->rle);
+		//c->rle = NULL;
 		
 		return;
 	}
 }
+*/
 
-
-void chunk_open_ro( struct ChunkMD *c )
+void chunk_open_ro( struct ChunkSet *set, struct ChunkMD *c )
 {
 	pthread_mutex_lock( &c->mutex_read ); 
 	c->last_access = (uint32_t)ctx_time();
@@ -305,52 +310,88 @@ void chunk_open_ro( struct ChunkMD *c )
 		pthread_mutex_lock( &c->mutex_write );
 	}
 	
-	chunk_decompress( c );
+	if(!c->voxels) {
 
+		// Null chunk is a shared fake chunk with only air
+		if( c->rle == set->null_chunk->rle ){
+			c->voxels = set->null_chunk->voxels;
+		} else {
+			c->voxels = rle_decompress( c->rle );
+			//chunk_decompress( c );
+		}
+	}
 	pthread_mutex_unlock( &c->mutex_read );
 }
 
-void chunk_close_ro( struct ChunkMD *c )
+void chunk_close_ro( struct ChunkSet *set, struct ChunkMD *c )
 {
 	pthread_mutex_lock( &c->mutex_read ); 
 	c->readers--;
 	if(	c->readers == 0 ) {
 		pthread_mutex_unlock( &c->mutex_write ); 
-		//chunk_compress( c );
 	}
 	pthread_mutex_unlock( &c->mutex_read ); 
 
-//	c->last_access = (uint32_t)ctx_time();
+	c->last_access = (uint32_t)ctx_time();
 }
 
 
-void chunk_open_rw( struct ChunkMD *c )
+void chunk_open_rw( struct ChunkSet *set, struct ChunkMD *c )
 {
 	pthread_mutex_lock( &c->mutex_write ); 
-	chunk_decompress( c );
+
+	// Null chunk
+	if( c->voxels == set->null_chunk->voxels
+	||  c->rle    == set->null_chunk->rle ) {
+		c->rle = NULL;
+		c->voxels = mem_alloc( c->count*sizeof(Voxel) );
+		memcpy(c->voxels, set->null_chunk->voxels, c->count*sizeof(Voxel) );
+		return;
+	}
+
+	if( c->rle && c->voxels ) {
+		c->rle = mem_free(c->rle);
+		return;
+	}
+
+	if( c->rle && !c->voxels ){
+		c->voxels = rle_decompress( c->rle );
+		c->rle = mem_free( c->rle );
+		return;
+	}
+
+	if(c->voxels) return;
+
+	logf_error("Uninitalized chunk?");
+	logf_info("vxl %p rle %p", c->voxels, c->rle);
+	logf_info("nullvxl %p rle %p", set->null_chunk->voxels, set->null_chunk->rle);
+	panic();
 }
 
-void chunk_close_rw( struct ChunkMD *c )
+void chunk_close_rw( struct ChunkSet *set, struct ChunkMD *c )
 {
 	pthread_mutex_unlock( &c->mutex_write );
 }
 
 
 
-void chunkset_force_compress( struct ChunkSet* set ){
+void chunkset_force_compress( struct ChunkSet *set ){
 
 	for (int i = 0; i < set->count; ++i)
 	{
 		struct ChunkMD *c = set->chunks+i;
 
-		chunk_open_rw(c);
-		chunk_compress(c);
-		chunk_close_rw(c);
+		//chunk_open_rw(set, c);
+		chunk_compress(set, c);
+		//chunk_close_rw(set, c);
 
 	}
 
 }
 
+/*
+ * FOLLOWING CHECKING FUNCTIONS ARE DEPRICATED
+ */
 
 // Checks chunk safety
 // Is the voxel inside of a chunk, or on its edge? 
@@ -471,14 +512,17 @@ int voxel_visible(
 }
 
 
-void chunk_compress(struct ChunkMD *c){
-	void *vxl = c->voxels;
-	c->voxels = NULL;
+void chunk_compress(struct ChunkSet *set, struct ChunkMD *c){
+		if(!c->voxels) return;
 
-	c->rle = rle_compress( vxl, c->count  );
-	mem_free( vxl );
-
-	chunk_close_rw( c );
+		if( c->voxels == set->null_chunk->voxels ) {
+			c->voxels = NULL;
+		} else if( c->rle ) {
+			c->voxels = mem_free(c->voxels);
+		} else {
+			c->rle = rle_compress(c->voxels, c->count);
+			c->voxels = mem_free(c->voxels);
+		}
 }
 
 
@@ -539,12 +583,11 @@ void chunkset_manage(
 		if( c->dirty == 0 && 
 			!c->gl_vbo_local_lod == !c->lod
 		) {
-			if( c->rle == NULL 
+			if( c->voxels
 			&&	c->last_access+1.0 < ctx_time() ){
-				chunk_open_rw(c);
-				chunk_compress(c);
-				chunk_close_rw(c);
-				meshed_count++;
+
+				chunk_compress(set, c);
+
 			}
 			continue;
 		}
@@ -552,7 +595,7 @@ void chunkset_manage(
 		if( c->lod == -1 ) continue;
 		if( c->gl_vbo_local ) continue;
 
-		chunk_open_ro(c);
+		chunk_open_ro(set, c);
 
 		// Mark now, if theres a write while we do stuff, let it happen
 		c->dirty = 0;
@@ -605,8 +648,64 @@ void chunkset_manage(
 				&geom_items2
 			);
 			c->gl_vbo_local_segments[2] = geom_items2;
-
 			geom_items+=geom_items2;
+
+
+
+
+			memset( mesher[omp_id].mask[buf_id], 0, mesher[omp_id].mask_size );
+			chunk_mask_downsample( set, 1, 
+				mesher[omp_id].work[buf_id],
+				mesher[omp_id].mask[buf_id]
+			);
+			
+			geom_items2 = 0;
+			chunk_make_splatlist(
+				set, c, 2,
+				mesher[omp_id].mask[buf_id],
+				&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
+				&geom_items2
+			);
+			c->gl_vbo_local_segments[3] = geom_items2;
+			geom_items+=geom_items2;
+			
+
+
+
+			memset( mesher[omp_id].work[buf_id], 0, mesher[omp_id].work_size );
+			chunk_mask_downsample( set, 1, 
+				mesher[omp_id].mask[buf_id],
+				mesher[omp_id].work[buf_id]
+			);
+			
+			geom_items2 = 0;
+			chunk_make_splatlist(
+				set, c, 3,
+				mesher[omp_id].work[buf_id],
+				&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
+				&geom_items2
+			);
+			c->gl_vbo_local_segments[4] = geom_items2;
+			geom_items+=geom_items2;
+
+
+			memset( mesher[omp_id].mask[buf_id], 0, mesher[omp_id].mask_size );
+			chunk_mask_downsample( set, 1, 
+				mesher[omp_id].work[buf_id],
+				mesher[omp_id].mask[buf_id]
+			);
+			
+			geom_items2 = 0;
+			chunk_make_splatlist(
+				set, c, 4,
+				mesher[omp_id].mask[buf_id],
+				&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
+				&geom_items2
+			);
+			c->gl_vbo_local_segments[5] = geom_items2;
+			geom_items+=geom_items2;
+			
+
 
 			//logf_info( "%i %i", c->gl_vbo_local_segments[1], c->gl_vbo_local_segments[2] );
 
@@ -636,7 +735,7 @@ void chunkset_manage(
 		// POTENTIAL BUG: IF CHUNK CLEARED, MAKE SURE YOU CLEAR THE GEOMETRY!
 		// Making this into a zero can be used to signal about this state!
 
-		chunk_close_ro(c);
+		chunk_close_ro(set, c);
 		meshed_count++;
 	}
 }

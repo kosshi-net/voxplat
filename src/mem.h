@@ -16,9 +16,10 @@
 
 int mem_init(size_t);
 
-void * _mem_alloc  	( size_t, char*label );
-void * _mem_calloc	( size_t, char*label );
-void   _mem_free	( void* , char*label );
+void  *_mem_alloc  	( size_t, char*label );
+void  *_mem_calloc	( size_t, char*label );
+void  *_mem_free	( void* , char*label );
+// free always returns null
 
 void mem_log_debug(void);
 

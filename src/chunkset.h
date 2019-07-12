@@ -34,14 +34,15 @@ struct ChunkSet {
 #define MAX_LOD_LEVEL 8
 
 // Chunk MetaData
+// this is getting bloated, figure something out 
 struct ChunkMD {
 	
 	pthread_mutex_t mutex_read;
 	pthread_mutex_t mutex_write;
-	uint32_t readers;		// num threads are reading the chunk (UNUSED)
+	uint16_t readers;		// num threads are reading the chunk (UNUSED)
 
-	uint32_t last_access;	// ctx_time()
-	uint32_t count;			// Count of voxels
+	float last_access;	// ctx_time()
+	uint32_t count;			// Count of voxels (duplicated just for convinience...)
 	uint16_t offset[3];		// In chunks
 	Voxel  *voxels;			
 	Voxel  *rle;
@@ -99,18 +100,23 @@ struct ChunkMD {
  * ChunkMD states
  *
  * Voxel Data
- * State is derived from existense of data pointers
- *   *voxels and *rle are NULL
+ * State is determined by pointers:
+ *   voxels and rle are NULL
  *   	Initialize the set!
  *
- *   *voxels is defined, *rle NULL;
- *		RLE has to be regenrated
+ *   voxels is defined, rle NULL;
+ *		Chunk has been written to, RLE has to be regenrated
  *		
- *   *voxels is defined, *rle is defined
- *  	RLE has to be NULLed once any write occurs
+ *   voxels is defined, rle is defined
+ *  	Chunk was in read only mode. RLE has to be deleted once any write occurs
  *   
- *   *voxels NULL, *rle defined
- *  	Requires decompressing
+ *   voxels NULL, rle defined
+ *  	Requires decompressing on open
+ *
+ * 	The nullchunk
+ *   A read-only chunk with nothing but air. Copy on modify
+ *
+ *    
  *
  * Geometry
  *	setting dirty invalidates VBO
@@ -120,6 +126,7 @@ struct ChunkMD {
  * TODO
  * 	Make sure everything works properly when chunk doenst anymore generate a 
  *  mesh (when all the voxels are removed)
+ *   - Hacky fixed, clean up properly still to be done
  */
 
 
@@ -162,16 +169,15 @@ void chunkset_clear_import( struct ChunkSet* );
 
 void chunkset_manage( struct ChunkSet* );
 
-void chunk_open_ro(  struct ChunkMD* );
-//void chunk_touch_ro(  struct ChunkMD* );
-void chunk_open_rw(  struct ChunkMD* );
-void chunk_close_ro( struct ChunkMD* );
-void chunk_close_rw( struct ChunkMD* );
+void chunk_open_ro(  struct ChunkSet *set, struct ChunkMD *c );
+void chunk_open_rw(  struct ChunkSet *set, struct ChunkMD *c );
+void chunk_close_ro( struct ChunkSet *set, struct ChunkMD *c );
+void chunk_close_rw( struct ChunkSet *set, struct ChunkMD *c );
 
 Voxel voxel_read( struct ChunkSet*, uint32_t*  );
 void  voxel_write( struct ChunkSet*, uint32_t*, Voxel );
 
-void chunk_compress(struct ChunkMD *c);
+void chunk_compress(struct ChunkSet *set, struct ChunkMD *c);
 
 void chunkset_force_compress( struct ChunkSet* );
 

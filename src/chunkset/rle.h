@@ -5,6 +5,6 @@
 #include "chunkset.h"
 
 Voxel *rle_compress( Voxel*, uint32_t alength );
-Voxel *rle_decompress( Voxel* );
+Voxel *rle_decompress( void* );
 
 #endif

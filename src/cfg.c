@@ -58,7 +58,7 @@ void cfg_init( int argc, char **argv ){
 	config.opengl_debug = 0;
 
 
-	config.heap = parse_num( "1G" );
+	config.heap = parse_num( "512M" );
 
 	uint32_t default_chunk_size = 64;
 	uint32_t default_world_size[] = { 2048, 256, 2048 };
