@@ -1,32 +1,36 @@
 # Voxplat
 
 A hybrid voxel rendering engine, written with C and OpenGL. The goal of this
-project was to make a engine capable of rendering a large amount of
-voxels on mid-tier graphics cards.
+project is to make a engine capable of rendering a large amount of
+voxels on mid-tier graphics cards. And maybe eventually a game.
 
 8192x512x8192 map with over 120 000 trees, rendered at 130fps on Radeon RX 480. 128^3 chunks, 4.5 GB peak ram usage, FPS limited by draw calls.
-![Pretty picture](https://kosshi.net/u/jzn6y.png)
-![Pretty picture](https://kosshi.net/u/jzldm.png)
+![Pretty picture](img/0.png?raw=true)
+![Pretty picture](img/1.png?raw=true)
 
 ## Rendering method
-
 This is achieved with OpenGL splatting, basically rendering quads and ray-aabb
 testing in a fragment shader. This reduces the vertex count to just 1 per voxel, 
 but with a somewhat slow fragment shader. This is a real probelm with nearby
 voxels, so hybrid rendering is used: meshes for nearby, splatting farther away.
 
-Engine implements SVO-like level of detail, with first level starting at 1024, 
-voxels away.
+Engine implements SVO-like level of detail, with first level starting at 1024 
+voxels away. 
+
+### Textures?
+There was support a while back, see the album linked below. The splatter 
+can do them just fine. But the meshing and rendering are already complex and 
+messy enough to develop without textures, dropped support until those system
+are less temp-code. I also just like solidcolor voxels :)
 
 ### Relevant
-This [Nvidia paper](http://www.jcgt.org/published/0007/03/04/) has a different, 
-more refined version of the splatting part.
+Splatting method was inspired by this [paper](http://www.jcgt.org/published/0007/03/04/)
 
-### Work in progress!
+## Work in progress!
 This is also my first large C project, there is a lot of code and a lot of it 
 is ugly and temporary. Especially the mesher. Don't look at the mesher.
 
-### Launch options
+## Launch options
 List of some launch options and their default values:
 
 ``--heap 512M``
@@ -60,9 +64,7 @@ Use OpenGL compatability mode. Might help if you have trouble running the engine
 - RLE compression
 - Simple custom malloc implementation
 - Ingame console (F12 to toggle)
-- Texture support, but its hard disabled for looks. I like solidcolor voxels :)
 - Builds on Linux and Windows (with MinGW)
-
 
 Some pictures:
 ![Pretty picture](https://i.imgur.com/ytUnnra.jpg)
