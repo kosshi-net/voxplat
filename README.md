@@ -5,8 +5,9 @@ project is to make a engine capable of rendering a large amount of
 voxels on mid-tier graphics cards. And maybe eventually a game.
 
 8192x512x8192 map with over 120 000 trees, rendered at 130fps on Radeon RX 480. 128^3 chunks, 4.5 GB peak ram usage, FPS limited by draw calls.
-![Pretty picture](img/0.png?raw=true)
+
 ![Pretty picture](img/1.png?raw=true)
+![Pretty picture](img/2.png?raw=true)
 
 ## Rendering method
 This is achieved with OpenGL splatting, basically rendering quads and ray-aabb
