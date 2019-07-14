@@ -561,7 +561,7 @@ struct {
 	uint32_t	 mask_size;
 
 	uint8_t		 lock[MESHER_THREAD_BUFFERS];
-} mesher[16];
+} mesher[4];
 
 void chunkset_manage(
 	struct ChunkSet *set
@@ -569,7 +569,8 @@ void chunkset_manage(
 
 	int meshed_count = 0;
 
-	#pragma omp parallel for
+	#pragma omp parallel num_threads(4)
+	#pragma omp for 
 	for( int i = 0; i < set->count; i++ ){
 		if(meshed_count>8) continue;
 
@@ -586,11 +587,13 @@ void chunkset_manage(
 				mesher[omp_id].geom[buf_id] = 
 					mem_calloc( mesher[omp_id].geom_size );
 
-				mesher[omp_id].work_size = set->root*2*set->root*2*set->root*2*sizeof(uint8_t);
+				mesher[omp_id].work_size = 
+					(set->root+1) * (set->root+1) * (set->root+1) *sizeof(uint8_t);
+
 				mesher[omp_id].work[buf_id] = 
 					mem_calloc( mesher[omp_id].work_size );
 
-				mesher[omp_id].mask_size = set->root*2*set->root*2*set->root*2*sizeof(uint8_t);
+				mesher[omp_id].mask_size = mesher[omp_id].work_size;
 				mesher[omp_id].mask[buf_id] = 
 					mem_calloc( mesher[omp_id].mask_size );
 			}
@@ -626,7 +629,6 @@ void chunkset_manage(
 
 		chunk_open_ro(set, c);
 
-		// Mark now, if theres a write while we do stuff, let it happen
 		c->dirty = 0;
 		c->gl_vbo_local_lod = c->lod;
 
@@ -683,7 +685,7 @@ void chunkset_manage(
 
 
 			memset( mesher[omp_id].mask[buf_id], 0, mesher[omp_id].mask_size );
-			chunk_mask_downsample( set, 1, 
+			chunk_mask_downsample( set, 2, 
 				mesher[omp_id].work[buf_id],
 				mesher[omp_id].mask[buf_id]
 			);
@@ -702,7 +704,7 @@ void chunkset_manage(
 
 
 			memset( mesher[omp_id].work[buf_id], 0, mesher[omp_id].work_size );
-			chunk_mask_downsample( set, 1, 
+			chunk_mask_downsample( set, 3, 
 				mesher[omp_id].mask[buf_id],
 				mesher[omp_id].work[buf_id]
 			);
@@ -719,7 +721,7 @@ void chunkset_manage(
 
 
 			memset( mesher[omp_id].mask[buf_id], 0, mesher[omp_id].mask_size );
-			chunk_mask_downsample( set, 1, 
+			chunk_mask_downsample( set, 4, 
 				mesher[omp_id].work[buf_id],
 				mesher[omp_id].mask[buf_id]
 			);

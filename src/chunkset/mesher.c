@@ -308,12 +308,23 @@ void chunk_make_mesh(
 
 
 
+uint32_t flatten1_no_po2( uint16_t *l, uint16_t root ){
+
+	uint32_t i = l[2];
+	i*=root;
+	i+=l[1];
+	i*=root;
+	i+=l[0];
+	return i;
+
+}
+
+
 void chunk_make_mask(
 	struct ChunkSet *setp,
 	struct ChunkMD *cp,
 	Voxel *mask
 ){
-	// Dereferense the structures for 20% speedup
 	struct ChunkSet set = *setp;		
 	struct ChunkMD c = *cp;
 
@@ -329,8 +340,8 @@ void chunk_make_mask(
 		else{
 			struct ChunkMD *_c = &set.chunks[ flatten3( cvec, set.max_bitw )];
 			chunk_open_ro( setp, _c );
-			nc[i] = *_c;
 			chunk_close_ro( setp, _c );
+			nc[i] = *_c;
 		}
 		cvec[i]--;
 	}
@@ -359,7 +370,9 @@ void chunk_make_mask(
 			uint16_t MC[3];
 			memcpy( MC, AC, sizeof(MC) );
 			MC[i] += (A==0);
-			uint32_t Mi = flatten1( MC, set.root_bitw+1 );
+			//uint32_t Mi = flatten1( MC, set.root_bitw+1 );
+			//uint32_t Mi = flatten1_no_po2( MC, 1 << (set.root_bitw+1) );
+			uint32_t Mi = flatten1_no_po2( MC, (1<<set.root_bitw)+1 );
 			mask[Mi] = A|B;
 		}
 		Ai++;
@@ -381,23 +394,27 @@ void chunk_mask_downsample(
 	//uint16_t r = (set.root<<level) + 1;
 	uint16_t r = (set.root) + 1;
 	uint16_t AC[3];
-	
+
+	uint16_t range = (set.root>>(level-1))+1;
+
 	// Loop thru the mask
-	for( AC[2] = 0; AC[2] < r; AC[2]++ )
-	for( AC[1] = 0; AC[1] < r; AC[1]++ )
-	for( AC[0] = 0; AC[0] < r; AC[0]++ )
+	for( AC[2] = 0; AC[2] < range; AC[2]++ )
+	for( AC[1] = 0; AC[1] < range; AC[1]++ )
+	for( AC[0] = 0; AC[0] < range; AC[0]++ )
 	{
-		uint32_t Mi = flatten1( AC, set.root_bitw+1 );
+		uint32_t Mi = flatten1_no_po2( AC, r );
 		if( mask[Mi] == 0 ) continue;
 
 		uint16_t MC[3];
 		memcpy( MC, AC, sizeof(MC) );
 		for (int i = 0; i < 3; ++i){
-			MC[i]>>=(level);
+			MC[i]>>=(1);
 		}
 
-		uint32_t Wi = flatten1( MC, set.root_bitw+1 );
+		uint32_t Wi = flatten1_no_po2( MC, r );
+		//uint32_t Wi = flatten1( MC, set.root_bitw+1 );
 		work[ Wi ] = mask[ Mi ];
+		Mi++;
 	}
 
 	return;
@@ -422,12 +439,14 @@ void chunk_make_splatlist(
 	uint16_t AC[3];
 
 	uint32_t v = *geometry_items;
+	uint16_t range = (set.root>>(level))+1;
 	// Loop thru the mask
-	for( AC[2] = 0; AC[2] < set.root+1; AC[2]++ )
-	for( AC[1] = 0; AC[1] < set.root+1; AC[1]++ )
-	for( AC[0] = 0; AC[0] < set.root+1; AC[0]++ )
+	for( AC[2] = 0; AC[2] < range; AC[2]++ )
+	for( AC[1] = 0; AC[1] < range; AC[1]++ )
+	for( AC[0] = 0; AC[0] < range; AC[0]++ )
 	{
-		uint32_t Mi = flatten1( AC, set.root_bitw+1 );
+		//uint32_t Mi = flatten1( AC, set.root_bitw+1 );
+		uint32_t Mi = flatten1_no_po2( AC, (1<<set.root_bitw)+1 );
 		if( mask[Mi] == 0 ) continue;
 
 		uint32_t ws[3];
