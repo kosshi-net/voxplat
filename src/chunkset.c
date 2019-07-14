@@ -31,6 +31,20 @@ struct ChunkSet *
 chunkset_create( uint8_t root_bitw, uint8_t max_bitw[] )
 {
 
+	/* 
+		Define the size of the world and chunks in power of twos.
+		5 = 32
+		6 = 64
+		7 = 128
+		etc
+
+		Good options:
+		6, (uint8_t[]){5,2,5} 	2048x256x2048 with 64 chunks
+		6, (uint8_t[]){6,2,6} 	4096x256x4096 with 64 chunks
+		7, (uint8_t[]){5,1,5} 	4096x256x4096 with 128 chunks
+	*/
+
+	
 	uint16_t max[3] = {
 		1 << max_bitw[0],
 		1 << max_bitw[1],
@@ -301,6 +315,7 @@ void chunk_decompress( struct ChunkMD *c ){
 void chunk_open_ro( struct ChunkSet *set, struct ChunkMD *c )
 {
 	pthread_mutex_lock( &c->mutex_read ); 
+
 	c->last_access = (uint32_t)ctx_time();
 
 	c->readers++;
@@ -340,6 +355,8 @@ void chunk_open_rw( struct ChunkSet *set, struct ChunkMD *c )
 {
 	pthread_mutex_lock( &c->mutex_write ); 
 
+	c->last_access = (uint32_t)ctx_time();
+
 	// Null chunk
 	if( c->voxels == set->null_chunk->voxels
 	||  c->rle    == set->null_chunk->rle ) {
@@ -368,11 +385,18 @@ void chunk_open_rw( struct ChunkSet *set, struct ChunkMD *c )
 	panic();
 }
 
-void chunk_close_rw( struct ChunkSet *set, struct ChunkMD *c )
-{
+void chunk_close_rw( struct ChunkSet *set, struct ChunkMD *c ){
+	c->last_access = (uint32_t)ctx_time();
 	pthread_mutex_unlock( &c->mutex_write );
 }
 
+
+void chunk_lock(   struct ChunkSet *set, struct ChunkMD *c ){
+	pthread_mutex_lock( &c->mutex_write );
+}
+void chunk_unlock( struct ChunkSet *set, struct ChunkMD *c ){
+	pthread_mutex_unlock( &c->mutex_write );
+}
 
 
 void chunkset_force_compress( struct ChunkSet *set ){
@@ -585,8 +609,9 @@ void chunkset_manage(
 		) {
 			if( c->voxels
 			&&	c->last_access+1.0 < ctx_time() ){
-
+				chunk_lock(set, c);
 				chunk_compress(set, c);
+				chunk_unlock(set, c);
 
 			}
 			continue;
@@ -594,6 +619,10 @@ void chunkset_manage(
 
 		if( c->lod == -1 ) continue;
 		if( c->gl_vbo_local ) continue;
+
+		// Artificial meshing latency
+		if(c->last_meshing+0.100 > ctx_time() ) continue;
+		c->last_meshing = ctx_time();
 
 		chunk_open_ro(set, c);
 

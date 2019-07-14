@@ -20,6 +20,7 @@
 #include <glad/glad.h> // OpenGL
 #include <cglm/cglm.h>
 
+#include <threadpool.h>
 #include <pthread.h>
 
 #include <unistd.h>
@@ -125,6 +126,7 @@ int main(int argc, char **argv)
 	game_tick();
 	ctx_poll_events();
 
+	threadpool_init();
 
     while ( !ctx_should_close() )
     {	

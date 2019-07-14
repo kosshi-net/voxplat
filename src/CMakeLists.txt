@@ -49,6 +49,8 @@ add_executable( game
 	cfg.c	
 	game.c
 
+	threadpool.c
+
 	chunkset.c
 	chunkset/edit.c
 	chunkset/mesher.c

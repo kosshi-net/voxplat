@@ -20,7 +20,7 @@
 
 
 /* Uncomment only for debugging */
-// #define USE_SYSTEM_ALLOC
+#define USE_SYSTEM_ALLOC
 /* If a slight buffer overrun doesn't still segfault, fill the alloc function
  * with mem_print_block, it will print what line allocated the previous block
  * that corrupt your links

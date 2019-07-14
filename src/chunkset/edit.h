@@ -14,4 +14,28 @@ Voxel chunkset_edit_raycast_until_solid(
 	int8_t *normal
 );
 
+
+
+int chunk_ws_inside(
+	struct ChunkSet* set, 
+	struct ChunkMD* c, 
+	int32_t* ws
+);
+
+
+void chunk_ws_write(
+	struct ChunkSet* set, 
+	struct ChunkMD* c, 
+	int32_t* ws,
+	Voxel voxel
+);
+
+void chunkset_edit_sphere(
+	struct ChunkSet* set, 
+	int32_t* ws, 
+	uint32_t radius,
+	Voxel voxel
+);
+
+
 #endif

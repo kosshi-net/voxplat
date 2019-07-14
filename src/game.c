@@ -32,7 +32,7 @@
 #include "chunkset.h"
 #include "chunkset/edit.h"
 #include "chunkset/gen.h"
-
+#include "threadpool.h"
 
 #include "cpp/noise.h"
 
@@ -53,6 +53,8 @@ int capped = ' ';
 double last_fps_update = 0;
 int fps_counter = 0;
 int fps = 0;
+
+float last_raytrace = 0;
 
 struct Camera cam;
 
@@ -187,6 +189,59 @@ void command_chunkset_edit( int argc, char **argv ){
 		logf_info("Usage: chunkset_edit set x y z id");
 	}
 }
+
+
+
+
+
+
+struct TaskArg_brush {
+	struct ChunkSet *set;
+	float ray[3];
+	float origin[3];
+	uint32_t brush_size;
+	Voxel brush_voxel;
+};
+
+void task_brush( void *a ){
+
+
+	struct TaskArg_brush *arg = a;
+
+	//glm_vec_inv(ray);
+
+	int32_t hitcoord[3] = {0};
+	int8_t normal[3] = {0};
+
+	Voxel hit_voxel = chunkset_edit_raycast_until_solid(
+		arg->set,
+		arg->origin,
+		arg->ray,		
+		(uint32_t*)hitcoord,
+		normal
+	);
+	if( hit_voxel < 1 ) return;
+
+	if( arg->brush_voxel ) 
+		for( int i = 0; i < 3; i++  ) hitcoord[i]+=normal[i];
+
+
+	if( arg->brush_size == 1 )
+		chunkset_edit_write( arg->set, 
+			(uint32_t*)hitcoord, arg->brush_voxel 
+		);
+	else
+		chunkset_edit_sphere( 
+			arg->set, hitcoord, 
+			brush_size, arg->brush_voxel 
+		);	
+
+}
+
+
+
+
+
 
 const char *renderer;
 
@@ -454,9 +509,11 @@ void game_tick(){
 	int _break = ctx_input_break_block();
 	int _place  = ctx_input_place_block();
 
-	if( (_break) ||
-		(_place)
-	 ){
+	if( (_break || _place) 
+		&& last_raytrace + (1.0f/60.0f) < now
+	){
+
+		last_raytrace = now;
 		vec3 ray;
 
 		_ss2ws(1,2,1,2,
@@ -465,42 +522,35 @@ void game_tick(){
 		);	
 
 		//glm_vec_inv(ray);
-
-		uint32_t hitcoord[3] = {0};
-		 int8_t normal[3] = {0};
+		/*
+		int32_t hitcoord[3] = {0};
+		int8_t normal[3] = {0};
 
 		Voxel v2 = chunkset_edit_raycast_until_solid(
 			set,
 			cam.location,
 			ray,		
-			hitcoord,
+			(uint32_t*)hitcoord,
 			normal
 		);
 		if( v2>0 && (_break||_place)  ){
 			if(_place)
 				for( int i = 0; i < 3; i++  )
 					hitcoord[i]+=normal[i];
-			uint32_t u[3];
-			for( u[0] = hitcoord[0]-brush_size; u[0] < hitcoord[0]+brush_size; u[0]++ )
-			for( u[1] = hitcoord[1]-brush_size; u[1] < hitcoord[1]+brush_size; u[1]++ )
-			for( u[2] = hitcoord[2]-brush_size; u[2] < hitcoord[2]+brush_size; u[2]++ ){
-				float _a[3], _b[3];
-				for (int i = 0; i < 3; ++i){	
-					_a[i] = (float)u[i];
-					_b[i] = (float)hitcoord[i];
-				}
-				if (glm_vec_distance(_a, _b) < brush_size){
-					chunkset_edit_write(set, u, _break ? 0 : held_voxel);
-					shadow_break_update(set, u);
-				}
-			}
+
+			chunkset_edit_sphere( set, hitcoord, brush_size, _break ? 0 : held_voxel);
 		}
-	/*	else if( v2>0 && _place  ){
-			for( int i = 0; i < 3; i++  )
-				hitcoord[i]+=normal[i];
-			chunkset_edit_write(set, hitcoord, held_voxel);
-			shadow_place_update(set, hitcoord);
-		}*/
+		*/
+		struct TaskArg_brush *args = mem_alloc(sizeof (struct TaskArg_brush));
+		args->set = set;
+		memcpy( args->ray, ray, sizeof(ray) );
+		memcpy( args->origin, cam.location, sizeof(args->origin) );
+		args->brush_size = brush_size;
+		args->brush_voxel = _break ? 0 : held_voxel;
+
+		threadpool_task( &task_brush, args );
+
+
 	}
 
 	//

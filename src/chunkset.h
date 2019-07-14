@@ -41,7 +41,8 @@ struct ChunkMD {
 	pthread_mutex_t mutex_read;
 	pthread_mutex_t mutex_write;
 	uint16_t readers;
-
+	
+	float last_meshing;
 	float last_access;		// ctx_time()
 	uint32_t count;			// Count of voxels (duplicated just for convinience...)
 	uint16_t offset[3];		// In chunks

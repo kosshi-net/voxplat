@@ -142,32 +142,6 @@ float get_height(struct ChunkSet *set, uint32_t x, uint32_t z){
 #define FEATMAP_TREE_BIT 16
 
 
-void chunkset_edit_raw_write(
-	struct ChunkSet* set, 
-	struct ChunkMD* c, 
-	uint32_t* ws, 
-	Voxel voxel
-){
-	//uint16_t chunk_vec[3];
-
-	// Check if ws in chunk
-	for( int i = 0; i < 3; i++  ){
-		if( ws[i]   < (c->offset[i] << set->root_bitw)
-		||	ws[i]+1 > (c->offset[i] << set->root_bitw) + set->root
-		) return;
-	}
-
-	uint16_t voxel_vec[3];
-	
-	for( int i = 0; i < 3; i++  ){
-		//chunk_vec[i] = ws[i] >> set->root_bitw;
-		voxel_vec[i] = ws[i] - ( c->offset[i] << set->root_bitw );
-	}
-
-	Voxel *v = &c->voxels[ flatten1( voxel_vec, set->root_bitw ) ];
-	*v = voxel;
-
-}
 void chunkset_gen_tree_in_chunk(
 	struct ChunkSet* set, 
 	struct ChunkMD* c, 
@@ -187,7 +161,7 @@ void chunkset_gen_tree_in_chunk(
 			uint32_t ws3[3];
 			memcpy( ws3, ws2, 3*sizeof(uint32_t));
 			ws3[0] -= x; ws3[1] -= y; ws3[2] -= z;
-			chunkset_edit_raw_write( set, c, ws3, 4 );
+			chunk_ws_write( set, c, ws3, 4 );
 			shadow_place_update(set, ws3);
 		}
 		//memcpy( ws2, ws, 3*sizeof(uint32_t));
@@ -196,13 +170,13 @@ void chunkset_gen_tree_in_chunk(
 
 	// Trunk
 	for( int i = 0; i < 14; i++ ){
-		chunkset_edit_raw_write( set, c, ws, 36 );
+		chunk_ws_write( set, c, ws, 36 );
 		ws[1]++;
 	}
-	chunkset_edit_raw_write( set, c, ws, 4 );
+	chunk_ws_write( set, c, ws, 4 );
 	shadow_place_update(set, ws);
 	ws[1]++;
-	chunkset_edit_raw_write( set, c, ws, 4 );
+	chunk_ws_write( set, c, ws, 4 );
 	shadow_place_update(set, ws);
 
 }
