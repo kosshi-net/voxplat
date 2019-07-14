@@ -1,10 +1,11 @@
 # Voxplat
 
 A hybrid voxel rendering engine, written with C and OpenGL. The goal of this
-project is to make a engine capable of rendering a large amount of
-voxels on mid-tier graphics cards. And maybe eventually a game.
+project is to make a voxel engine capable of rendering huge fully destructible 
+scenes on reasonable desktop hardware. And maybe eventually a game.
 
-8192x512x8192 map with over 120 000 trees, rendered at 130fps on Radeon RX 480. 128^3 chunks, 4.5 GB peak ram usage, FPS limited by draw calls.
+8192x512x8192 map with over 120 000 trees, rendered at 1920x1080 130fps on 
+Radeon RX 480. Using 128^3 chunks, 4 GB peak ram usage, FPS limited by draw calls.
 
 ![Pretty picture](img/1.png?raw=true)
 ![Pretty picture](img/2.png?raw=true)
@@ -15,8 +16,10 @@ testing in a fragment shader. This reduces the vertex count to just 1 per voxel,
 but with a somewhat slow fragment shader. This is a real probelm with nearby
 voxels, so hybrid rendering is used: meshes for nearby, splatting farther away.
 
-Engine implements SVO-like level of detail, with first level starting at 1024 
-voxels away. 
+No octrees are used, all voxels are stored in flat arrays, rle compressed when 
+inactive. Level of detail is implemented by "mipmapping" visible voxels of a 
+chunk. LOD kicks in at 1024 voxels away, far enough that single voxels are less
+than a single pixel in size at 1080p.
 
 ### Textures?
 There was support a while back, see the album linked below. The splatter 
@@ -105,7 +108,7 @@ mingw32-make;
 - glad (included)
 - cglm
 - stb/std_image.h
-- OpenMP
+- OpenMP and pthreads
 - FastNoise
 - FreeType
 
