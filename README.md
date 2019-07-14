@@ -9,6 +9,7 @@ Radeon RX 480. Using 128^3 chunks, 4 GB peak ram usage, FPS limited by draw call
 
 ![Pretty picture](img/1.png?raw=true)
 ![Pretty picture](img/2.png?raw=true)
+![Pretty picture](img/3.png?raw=true)
 
 ## Rendering method
 This is achieved with OpenGL splatting, basically rendering quads and ray-aabb
