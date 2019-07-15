@@ -16,6 +16,39 @@
 
 #define SHELL_INPUT_SIZE 128
 
+
+size_t parse_long(char *c){
+	size_t num = 0;
+	while(*c){
+		switch(*c){
+			case '0': case '1': case '2':
+			case '3': case '4': case '5':
+			case '6': case '7': case '8':
+			case '9':
+				num = num * 10 + (*c++ - '0');
+				break;
+			case 'G':
+			case 'g':
+				num *= 1024;
+			case 'M':
+			case 'm':
+				num *= 1024;
+			case 'K':
+			case 'k':
+				num *= 1024;
+				c++;
+				goto look_for_null;
+			default:
+				return 0;
+				break;
+		}
+	}
+	look_for_null:
+	if( *c == '\0' ) return num;
+	return 0;
+}
+
+
 struct Command{
 	char name[64];
 	void (*run)(int, char**);

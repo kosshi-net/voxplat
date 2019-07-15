@@ -20,9 +20,19 @@ struct Config
 
 	size_t 		heap;
 
-	char 		rle;
-	double 		rle_timeout;
-	double 		rle_at_start;
+
+	float 		sensitivity;
+	float 		speed;
+
+	char 		debug_show_chunk_borders;
+	char 		debug_disable_lod;
+
+	uint32_t 	draw_distance;
+
+	uint32_t 	brush_color;
+	char 		brush_color_random;
+	uint32_t 	brush_size;
+
 
 };
 

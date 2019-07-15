@@ -105,74 +105,50 @@ void _ss2ws(
 
 }
 
+// )=
 
-// GOD DAMMIT
-
-float sensitivity = 0.15;
 void command_sensitivity( int argc, char **argv ){
-	if(argc == 2){
-		float temp = atof(argv[1]);
-		if( temp != 0.0 )
-			sensitivity = temp;
-	}
-	logf_info("%f", sensitivity);
+	if(argc == 2) cfg_get()->sensitivity = atof(argv[1]);
+	logf_info("%f", cfg_get()->sensitivity);
 }
-
-float speed = 75;
 void command_speed( int argc, char **argv ){
-	if(argc == 2){
-		float temp = atof(argv[1]);
-		if( temp != 0.0 )
-			speed = temp;
-	}
-	logf_info("%f", speed);
+	if(argc == 2) cfg_get()->speed = atof(argv[1]);
+	logf_info("%f", cfg_get()->speed);
 }
 
-int show_chunks = 0;
 void command_show_chunks( int argc, char **argv ){
-	show_chunks = !show_chunks;
-	logf_info("%i", show_chunks);
+	char *r = &cfg_get()->debug_show_chunk_borders;
+	*r = !*r;
+	logf_info("%i", *r);
 }
 
-int debug_mark_near = 1;
 void command_debug_mark_near( int argc, char **argv ){
-	debug_mark_near = !debug_mark_near;
-	logf_info("%i", debug_mark_near);
+	char *r = &cfg_get()->debug_disable_lod;
+	*r = !*r;
+	logf_info("%i", *r);
 }
 
-Voxel held_voxel = 63;
 void command_held_voxel( int argc, char **argv ){
-	if(argc == 2){
-		float temp = atoi(argv[1]);
-		held_voxel = temp;
-	}
-	logf_info("%i", held_voxel);
+	if(argc == 2)   cfg_get()->brush_color = atoi(argv[1]);
+	logf_info("%i", cfg_get()->brush_color);
 }
 
-uint32_t draw_distance = 1024*2;
 void command_draw_distance( int argc, char **argv ){
-	if(argc == 2){
-		float temp = atoi(argv[1]);
-		draw_distance = temp;
-	}
-	logf_info("%i", draw_distance);
+	if(argc == 2) cfg_get()->draw_distance = parse_long(argv[1]);
+	logf_info("%i", cfg_get()->draw_distance);
 }
 
-uint8_t brush_size = 5;
 void command_brush_size( int argc, char **argv ){
-	if(argc == 2){
-		float temp = atoi(argv[1]);
-		brush_size = temp;
-	}
-	logf_info("%i", brush_size);
+	if(argc == 2)   cfg_get()->brush_size = atoi(argv[1]);
+	logf_info("%i", cfg_get()->brush_size);
 }
 
-
-int random_color = 0;
 void command_random_color( int argc, char **argv ){
-	random_color = !random_color;
-	logf_info("%i", random_color);
+	char *r = &cfg_get()->brush_color_random;
+	*r = !*r;
+	logf_info("%i", *r);
 }
+
 
 void command_chunkset_edit( int argc, char **argv ){
 	if( argc == 6 && strcmp(argv[1], "set") == 0 ){
@@ -233,7 +209,7 @@ void task_brush( void *a ){
 	else
 		chunkset_edit_sphere( 
 			arg->set, hitcoord, 
-			brush_size, arg->brush_voxel 
+			cfg_get()->brush_size, arg->brush_voxel 
 		);	
 
 }
@@ -271,8 +247,11 @@ int game_init(){
 	chunkset_clear( set ); 
 	chunkset_create_shadow_map( set );
 	chunkset_gen( set );
-	
-	cam.location[1] = 512;
+	cam.yaw = 90.0+45.0;
+	cam.location[0] = 64.0;
+	cam.location[1] = 128.0;
+	cam.location[2] = 64.0;
+
 	cam.fov =  90.0f;
 	cam.far_plane = 1024*2;
 
@@ -306,12 +285,12 @@ void game_tick(){
 	// Camera position and matrices
 	//
 
-	cam.far_plane = draw_distance;
+	cam.far_plane = cfg_get()->draw_distance;
 
 	double cur_x, cur_y;
 	ctx_cursor_movement( &cur_x, &cur_y  );
-	cam.yaw 	-= cur_x*sensitivity;
-	cam.pitch 	-= cur_y*sensitivity;
+	cam.yaw 	-= cur_x * cfg_get()->sensitivity;
+	cam.pitch 	-= cur_y * cfg_get()->sensitivity;
 	
 	if( cam.pitch > 90   ) cam.pitch=90;
 	if( cam.pitch < -90  ) cam.pitch=-90;
@@ -319,7 +298,7 @@ void game_tick(){
 	float pitch = 	glm_rad(-cam.pitch);
 	float yaw = 	glm_rad(-cam.yaw);
 
-	float s = delta*speed;
+	float s = delta*cfg_get()->speed;
 
 	float dir[] = {
 		cosf(pitch) * sinf(yaw),
@@ -390,8 +369,7 @@ void game_tick(){
 
 	struct ChunkMD *chunk_draw_queue[0xFFFF];
 	uint32_t 		chunk_draw_queue_count = 0;
-//	struct ChunkMD *chunk_near_draw_queue[1024];
-//	uint32_t 		chunk_near_draw_queue_count = 0;
+	// Separate queue for lod -1 ?
 
 	for( int i = 0; i < set->count; i++  ){
 		struct ChunkMD *c = &set->chunks[i];
@@ -403,30 +381,29 @@ void game_tick(){
 			here[i] = cam.location[i];
 		}
 		float distance = glm_vec_distance( here, cwp );
-		if( debug_mark_near ){
-			c->lod = (distance > 128.0);
-			if((distance > 1024.0)) c->lod = 2;
+		if( !cfg_get()->debug_disable_lod ){
+			c->lod = 0;
 
-			// Lod above 2 is broken atm
-			
-			if((distance > 1024.0*2)) c->lod = 3;
-			if((distance > 1024.0*4)) c->lod = 4;
-			if((distance > 1024.0*6)) c->lod = 5;
-			//if((distance > cam.far_plane)) c->lod = -1;
+			if(distance < 128.0) c->lod = -1; // Meshed
+
+			if(distance > 1024.0*1)	c->lod++;
+			if(distance > 1024.0*2) c->lod++;
+			if(distance > 1024.0*4) c->lod++;
+			if(distance > 1024.0*6) c->lod++;
 		}
 		
+		// Send for rendering anyway. Rendering loop also uploads
 		if( c->mesher_lock && *c->mesher_lock ) goto push;
 
-
-		if( c->gl_vbo == 0 && c->gl_vbo_local == 0) 				continue;
-		//if( c->gl_vbo_local_items == 0 ) 							continue;
+		if( !c->gl_vbo && !c->gl_vbo_local) 				continue;
+		//if( c->gl_vbo_local_items == 0 )					continue;
 
 		// Frustum cull
 		if( distance > cam.far_plane+set->root )					continue;
 		if( !gfx_fcull(cam.frustum_planes, cwp, set->root*0.85) ) 	continue;
 
 		push:
-			chunk_draw_queue[chunk_draw_queue_count++] = c;
+		chunk_draw_queue[chunk_draw_queue_count++] = c;
 	}
 
 	//
@@ -455,56 +432,47 @@ void game_tick(){
 		&splat_count
 	);
 
-
+	//
 	// Draw chunk AABB wireframes
-	if(show_chunks){
-		for( int i = 0; i < chunk_draw_queue_count; i++  ){
-			struct ChunkMD *c = chunk_draw_queue[i];
+	//
 
-			if( c->lod > 0 ) continue;
+	if( cfg_get()->debug_show_chunk_borders ){
 
-			float min[3];
-			float max[3];
-			for (int i = 0; i < 3; ++i){
-				min[i] = c->offset[i]*set->root + 		0.1;
-				max[i] = (c->offset[i]+1)*set->root  - 	0.1;
+		for (int j = 0; j < 2; ++j)
+		{
+			for( int i = 0; i < chunk_draw_queue_count; i++  ){
+				struct ChunkMD *c = chunk_draw_queue[i];
+
+				if(j){
+					if( c->lod > -1 ) continue;
+				}
+				else{
+					if( c->lod == -1 ) continue;
+				}
+
+				float min[3];
+				float max[3];
+				for (int i = 0; i < 3; ++i){
+					min[i] = c->offset[i]*set->root + 		0.1;
+					max[i] = (c->offset[i]+1)*set->root  - 	0.1;
+				}
+				gfx_aabb_push( 
+					min, max
+				);
 			}
-			gfx_aabb_push( 
-				min, max
+			gfx_aabb_draw( 
+				&cam,
+				(float[]){1.0, (float)j, 1.0, 1.0}
 			);
 		}
-		gfx_aabb_draw( 
-			&cam,
-			(float[]){1.0, 1.0, 1.0, 1.0}
-		);
-
-		for( int i = 0; i < chunk_draw_queue_count; i++  ){
-			struct ChunkMD *c = chunk_draw_queue[i];
-
-			if( c->lod == 0 ) continue;
-
-			float min[3];
-			float max[3];
-			for (int i = 0; i < 3; ++i){
-				min[i] = c->offset[i]*set->root + 		0.1;
-				max[i] = (c->offset[i]+1)*set->root  - 	0.1;
-			}
-			gfx_aabb_push( 
-				min, max
-			);
-		}
-		gfx_aabb_draw( 
-			&cam,
-			(float[]){1.0, 0.0, 1.0, 1.0}
-		);
 	}
 
 	//
 	// World editing 
 	//
 
-	if( random_color )
-		held_voxel = 63*noise_randf();
+	if( cfg_get()->brush_color_random )
+		cfg_get()->brush_color = 63*noise_randf();
 	
 	int _break = ctx_input_break_block();
 	int _place  = ctx_input_place_block();
@@ -521,35 +489,15 @@ void game_tick(){
 			ray
 		);	
 
-		//glm_vec_inv(ray);
-		/*
-		int32_t hitcoord[3] = {0};
-		int8_t normal[3] = {0};
-
-		Voxel v2 = chunkset_edit_raycast_until_solid(
-			set,
-			cam.location,
-			ray,		
-			(uint32_t*)hitcoord,
-			normal
-		);
-		if( v2>0 && (_break||_place)  ){
-			if(_place)
-				for( int i = 0; i < 3; i++  )
-					hitcoord[i]+=normal[i];
-
-			chunkset_edit_sphere( set, hitcoord, brush_size, _break ? 0 : held_voxel);
-		}
-		*/
+		// Send task to the thread pool
 		struct TaskArg_brush *args = mem_alloc(sizeof (struct TaskArg_brush));
 		args->set = set;
 		memcpy( args->ray, ray, sizeof(ray) );
 		memcpy( args->origin, cam.location, sizeof(args->origin) );
-		args->brush_size = brush_size;
-		args->brush_voxel = _break ? 0 : held_voxel;
+		args->brush_size = cfg_get()->brush_size;
+		args->brush_voxel = _break ? 0 : cfg_get()->brush_color;
 
 		threadpool_task( &task_brush, args );
-
 
 	}
 

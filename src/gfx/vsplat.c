@@ -190,37 +190,29 @@ void gfx_vsplat_draw(
 		struct ChunkMD *c = queue[i];
 
 		if( c->gl_vbo == 0 ) goto skip_draw;
-		if(c->gl_vbo_lod == 0) goto skip_draw; 
+		if(c->gl_vbo_lod == -1 ) goto skip_draw; // If meshed
 
 		// RENDER
 		glBindVertexArray(c->gl_vao);
 
 		int lod = c->lod;
-		if(!lod) lod = 1;
+		if(lod<0) lod = 0; // Chunk is being meshed for -1, draw meanwhile
 
 		glUniform1f(
 			vsplat_shader_u_lod,
-			1<<(lod-1)
+			1<<(lod)
 		);
 
-/*
-		uint32_t start = c->gl_vbo_segments[lod-1];
-		if( lod == 3 )
-			//continue;
-			start = c->gl_vbo_segments[1]+c->gl_vbo_segments[2];
-*/
 		uint32_t start = 0;
-		for (int i = 1; i < lod; ++i)
-		{
+		for (int i = 1; i < lod+1; ++i)
 			start += c->gl_vbo_segments[i];
-		}
 
 		glDrawArrays( GL_POINTS, 
 			start/4, 
-			c->gl_vbo_segments[lod]  /4
+			c->gl_vbo_segments[lod+1]  /4
 		);
 
-		*item_count += c->gl_vbo_segments[c->lod]  / 4;
+		*item_count += c->gl_vbo_segments[c->lod+1]  / 4;
 
 
 		skip_draw:
@@ -279,11 +271,8 @@ void gfx_vsplat_draw(
 			c->gl_vbo_lod = c->gl_vbo_local_lod;
 			c->gl_vbo_local = NULL;
 
-			for (int i = 0; i < 8; ++i)
-			{
+			for (int i = 0; i < MAX_LOD_LEVEL; ++i)
 				c->gl_vbo_segments[i] = c->gl_vbo_local_segments[i];
-			}
-
 
 		
 			if( c->gl_ibo_local != NULL ){

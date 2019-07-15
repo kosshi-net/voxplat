@@ -344,3 +344,126 @@ void command_export( int argc, char **argv ){
 
 	fclose(fptr);
 }
+
+
+/*
+ * FOLLOWING CHECKING FUNCTIONS ARE DEPRICATED
+ */
+
+// Checks chunk safety
+// Is the voxel inside of a chunk, or on its edge? 
+int voxel_chunk_safe(
+	struct ChunkSet *set,
+	struct ChunkMD *c,
+	uint16_t *vec,
+	uint32_t vi
+){
+	uint16_t r = set->root-1;
+	return !(
+		vec[0] == 0 ||
+		vec[1] == 0 ||
+		vec[2] == 0 ||
+		vec[0] == r ||
+		vec[1] == r ||
+		vec[2] == r 
+	);
+
+}
+
+// Checks set safety
+// Is the chunk on set edge? Is there neigboring chunks?
+int voxel_set_safe(
+	struct ChunkSet *set,
+	struct ChunkMD *c,
+	uint16_t *vec,
+	uint32_t vi
+){
+	//chunk_touch_ro(c);
+	// Calulate worldspace
+	for( int i = 0; i < 3; i++  ){
+
+		uint32_t max = (set->max[i]  << set->root_bitw) - 1;
+		uint32_t  ws = (c->offset[i] << set->root_bitw) + vec[i] ;
+		if( ws == 0 || ws == max) return 0;
+	}
+	
+	return 1;
+
+}
+
+// Checks voxel visibility on chunk boundaries
+// This function is SET UNSAFE!
+int voxel_visible_safe(
+	struct ChunkSet *set,
+	struct ChunkMD *c,
+	uint16_t *vec,
+	uint32_t vi
+){
+	uint8_t shift = 0;
+	uint8_t cshift = 0;
+
+	uint32_t ci = flatten3( c->offset, set->max_bitw );
+
+	uint16_t r = set->root-1;  
+	// bitmask 0b 000 000 111
+	//             X   Y   Z
+
+	chunk_touch_ro(c);
+
+	// Loop per face
+	for( int i = 0; i < 3; i++  ){
+		// -check
+		if( vec[i] == 0  ){ 
+			struct ChunkMD *nc = &set->chunks[ ci - (1 << cshift) ];
+			chunk_touch_ro(nc);
+			if(  nc->voxels[ vi + (r << shift) ] == 0 ) return 1;
+		}else if( c->voxels[ vi - (1 << shift) ] == 0 ) return 1;
+		// +check
+		if( vec[i] == r ){ 
+			struct ChunkMD *nc = &set->chunks[ ci + (1 << cshift) ];
+			chunk_touch_ro(nc);
+			if(  nc->voxels[ vi - (r << shift) ] == 0 ) return 1;
+		}else if( c->voxels[ vi + (1 << shift) ] == 0 ) return 1;
+		
+		shift  += set->root_bitw;
+		cshift += set-> max_bitw[i];
+	}
+
+	return 0;
+}
+
+// Chunk&set Unsafe visibility check
+// Very fast, but segfaults if you check on chunk edges
+int voxel_visible_unsafe( 
+	struct ChunkSet *set,
+	struct ChunkMD *c,
+	uint16_t *vec,
+	uint32_t vi
+){	
+	uint8_t shift = 0;
+	for( int i = 0; i < 3; i++ ){
+		if( c->voxels[ vi + (1 << shift) ] == 0 
+		||  c->voxels[ vi - (1 << shift) ] == 0  
+		) return 1;
+		shift += set->root_bitw;
+	}
+	return 0;
+}
+
+
+// Set and chunk safe visibility check
+int voxel_visible(
+	struct ChunkSet *set,
+	struct ChunkMD *c,
+	uint16_t *vec,
+	uint32_t vi
+){
+	if( !voxel_set_safe( set,c,vec,vi ) ) {
+		return !(vec[1] == 0);
+	}
+
+	if( voxel_chunk_safe( set,c,vec,vi ) )
+		return voxel_visible_unsafe( set,c,vec,vi );
+	else
+		return voxel_visible_safe  ( set,c,vec,vi );
+}

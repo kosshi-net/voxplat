@@ -145,34 +145,10 @@ int main(int argc, char **argv)
     event_fire(EVENT_EXIT, NULL);
 	log_info("Goodbye!");
 	gfx_shell_exclusive_draw();
-	// Kill the mesher thread?
 	sleep( 1 );
 	ctx_terminate();
 	exit(0);
 }
-
-
-
-
-void log_tests(){
-		
-
-	logf_info("Testing res module..");
-	char*str = res_strcpy( test_txt );
-	logf_info("(%s)", str);
-	mem_free(str);
-
-	logf_info("Testing newline\nNewline");
-	logf_warn("Testing Warning");
-	mem_log_debug();
-	void* _p = mem_alloc(1);
-	mem_log_debug();
-	mem_free(_p);
-	mem_log_debug();
-	
-}
-
-
 
 
 void log_compiler_info(){

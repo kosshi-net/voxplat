@@ -154,8 +154,6 @@ void gfx_vmesh_draw(
 
 	//uint32_t item_count = 0;
 
-
-
 	//for( int i = 0; i < set->count; i++  ){
 	//	struct ChunkMD *c = &set->chunks[i];
 	for( int i = 0; i < queue_count; i++  ){
@@ -163,31 +161,14 @@ void gfx_vmesh_draw(
 	
 
 		if( c->gl_vbo == 0 ) continue;
-		if(c->gl_vbo_lod > 0) continue;
+		if(c->gl_vbo_lod > -1) continue;
 
 		glBindVertexArray(c->gl_vao);
-		//c->gl_vbo_preferred_type = gfx_fcull(near_planes, cwp, set->root*0.75);
-		//if(c->gl_vbo_preferred_type != c->gl_vbo_type) continue;
 		// RENDER
 	
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c->gl_ibo);
 
 		glBindBuffer(GL_ARRAY_BUFFER, c->gl_vbo);
-/*
-		glVertexAttribPointer(
-			vmesh_shader_aVertex, 3, GL_SHORT, GL_FALSE, 
-			4*sizeof(int16_t),
-			NULL
-		);
-		
-		glVertexAttribIPointer(
-			vmesh_shader_aColor, 1, GL_SHORT,
-			4*sizeof(int16_t), 
-			(const void*) (3*sizeof(int16_t))
-		);
-*/
-
-		//glDrawArrays( GL_TRIANGLES, 0, c->gl_vbo_items/4);
 		
  		glDrawElements(
  		    GL_TRIANGLES,

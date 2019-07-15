@@ -114,6 +114,13 @@ void integrity_check(char*source){
 }
 
 
+void mem_corrupt_block( struct MemoryNode *node ){
+	mem_print_block( node );
+	mem_print_block( node->next );
+	panic();
+}
+
+
 //#define BEST_FIT
 void *mem_block_alloc(size_t bytes){
 
@@ -139,6 +146,9 @@ void *mem_block_alloc(size_t bytes){
 			best = node;
 			break;
 		}
+
+		if( node->next && node->next->free > 1 ) mem_corrupt_block(node);
+
 	} while( (node=node->next) );
 
 	#endif

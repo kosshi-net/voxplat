@@ -169,8 +169,6 @@ void chunk_ws_write(
 			c->offset[0], c->offset[1], c->offset[2]
 
 		);
-
-
 		panic();
 	}
 
@@ -204,7 +202,7 @@ void chunkset_edit_sphere(
 	);
 
 	struct ChunkMD **c = list;
-	if(!c) return;
+	if(!*c) return;
 
 	//do logf_info("%p", *c) while(*++c);
 
@@ -235,11 +233,6 @@ void chunkset_edit_sphere(
 					shadow_break_update(set, u);
 					chunk_open_rw(set, *c); 
 				}
-				//if(voxel)
-				//	shadow_place_update(set, u);
-				//else
-				
-				
 			}
 		} 
 		chunk_close_rw(set, *c); 
@@ -279,7 +272,11 @@ Voxel chunkset_edit_raycast_until_solid(
 
 
 	for (int i = 0; i < 3; ++i) {
-		deltaDist[i] = sqrt( t[i][0]*t[i][0] + t[i][1]*t[i][1] + t[i][2]*t[i][2] );
+		deltaDist[i] = sqrt( 
+			t[i][0]*t[i][0] + 
+			t[i][1]*t[i][1] + 
+			t[i][2]*t[i][2]
+		);
 
 		if (vector[i] < 0) {
 			step[i] = -1.0f;
