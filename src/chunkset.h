@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <pthread.h>
 
+#include <stdatomic.h>
+#define atomic _Atomic
+
 
 typedef uint8_t Voxel;
 
@@ -21,7 +24,7 @@ typedef uint8_t Voxel;
  */
 
 
-// A block of chunked voxel space
+// Chunked voxel space
 struct ChunkSet {
 	
 	uint32_t count;			// Total chunk count, DEPRICATED
@@ -35,7 +38,7 @@ struct ChunkSet {
 	uint16_t  max[3];		// Amount of chunks per dimension
 	uint8_t   max_bitw[3];	// Bitwidth of max
 	
-	// Size of world can be counted by max[i]*root
+	// Size of world can be counted by max[i]<<root_bitw
 
 	struct ChunkMD *chunks;
 	struct ChunkMD *null_chunk; // Read only chunk with nothing but air
@@ -57,6 +60,7 @@ struct ChunkMD {
 	pthread_mutex_t mutex_write;
 	uint16_t readers;
 
+	// Accessed with locks
 	float last_access;		// ctx_time()
 	float last_meshing;		// Used to limit meshing frequency
 
@@ -65,18 +69,27 @@ struct ChunkMD {
 	Voxel 	*voxels;			
 	Voxel 	*rle;
 
-	int8_t		lod;		// Level of detail. -1 is meshed
-	uint8_t     dirty;		// Signal geometry update
+	// Lockless accesses
 
-	void	   *gl_vbo_local;  	
-	// Temporary store for vbo data. Also a signal for upload. Do not free!
-	int8_t		gl_vbo_local_lod;
-	uint32_t	gl_vbo_local_items;
-	uint32_t	gl_vbo_local_segments[MAX_LOD_LEVEL];
+	// Level of detail. -1 is used for meshing, 0 to MAX_LOD_LEVEL for 
+	// splatting. Changing this from splat range to mesh range signals a remesh
+	volatile int8_t		 lod;
 
-	void	   *gl_ibo_local; 
-	uint32_t	gl_ibo_local_items;
+	// Writing 1 signals a geometry update
+	volatile uint8_t      dirty;		
 
+	// Pointer to vbo data. Also a signal for upload. Do not free!
+	void volatile   	*gl_vbo_local;  	
+	int8_t			 	 gl_vbo_local_lod;
+	uint32_t			 gl_vbo_local_items;
+	uint32_t		 	 gl_vbo_local_segments[MAX_LOD_LEVEL];
+
+	void				*gl_ibo_local; 
+	uint32_t			 gl_ibo_local_items;
+	// Signal to mesher that buffers are safe for reuse
+	uint8_t volatile  	*mesher_lock; 
+
+	// Owned excusively by rendering thread
 	uint32_t	gl_vao;
 	uint32_t	gl_vbo;
 	int8_t		gl_vbo_lod;
@@ -85,44 +98,19 @@ struct ChunkMD {
 
 	uint32_t	gl_ibo;
 	uint32_t	gl_ibo_items;
-
-	// Signal to mesher that buffers are safe for reuse
-	uint8_t	    *mesher_lock; 
-
-	// use this in the future?
-/*
-	// Sparse voxel list, basically just list of visible voxels
-	void 	*svl [MAX_LOD_LEVEL];
-	uint32_t svl_items;
-
-	// REMOTE
-	uint8_t		splat_dirty;
-	uint8_t		 mesh_dirty;
-
-	uint32_t	gl_splat_vbo;
-	uint32_t	gl_splat_vbo_items[MAX_LOD_LEVEL];
-
-	uint32_t	gl_mesh_vbo;
-	uint32_t	gl_mesh_vbo_items;
-	uint32_t	gl_mesh_ibo;
-	uint32_t	gl_mesh_ibo_items;
-
-	// LOCAL
-	uint32_t	lo_splat_vbo;
-	uint32_t	lo_splat_vbo_items[MAX_LOD_LEVEL];
-
-	uint32_t	lo_mesh_vbo;
-	uint32_t	lo_mesh_vbo_items;
-	uint32_t	lo_mesh_ibo;
-	uint32_t	lo_mesh_ibo_items;
-*/
 };
 
 /*
  * Synchronization
  * For voxel access, you must use open/close functions below.
- * For communication between meshing and rendering threads, no locks should be 
- * used. Instead, changing certain variables will be used for signaling.
+ *
+ *
+ * The volatile keyword is used here to mark variables that are
+ * used by multiple threads with no mutexes. Synchronization for these is 
+ * achieved by certain "signal" variables, writing to them means you give 
+ * ownership to a different thread, and you must not change any relevant
+ * variables (payload) anymore.
+ * This is done to avoid using any locks in the rendering thread.
  */
 
 /*
@@ -164,9 +152,9 @@ void chunk_unlock( struct ChunkSet *set, struct ChunkMD *c );
  *   voxels NULL, rle defined
  *  	Requires decompressing on open
  * 
- *   Everything above has been implemented in the open/close functions
- * 
- *
+ * Everything above has been implemented in the open/close functions.
+ * RO functions also return null chunks when possible, and RW properly 
+ * copies.
  */
 
 /*

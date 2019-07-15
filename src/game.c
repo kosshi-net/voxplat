@@ -44,6 +44,8 @@
 /*
  * This file contains mostly temporary code that hasn't yet found its place in
  * a dedicated module. Tread with care. Main game loop and init is done here.
+ * 
+ * If you are looking for documentation, chunkset.h has some
  */
 
 
