@@ -4,14 +4,9 @@ A hybrid voxel rendering engine, written with C and OpenGL. The goal of this
 project is to make a voxel engine capable of rendering huge fully destructible 
 scenes on reasonable desktop hardware. And maybe eventually a game.
 
- Using 128^3 chunks, 4 GB peak ram usage, FPS limited by draw calls.
-
-
-16384 x 256 x 16384 map
-
+16384 x 256 x 16384 map rendered on a Radeon RX 480, 1920x1080
 ![Pretty picture](img/5.png?raw=true)
 ![Pretty picture](img/4.png?raw=true)
-
 
 ## Rendering method
 This is achieved with OpenGL splatting, basically rendering quads and ray-aabb
@@ -19,10 +14,11 @@ testing in a fragment shader. This reduces the vertex count to just 1 per voxel,
 but with a somewhat slow fragment shader. This is a real probelm with nearby
 voxels, so hybrid rendering is used: meshes for nearby, splatting farther away.
 
-No octrees are used, all voxels are stored in flat arrays, rle compressed when 
-inactive. Level of detail is implemented by "mipmapping" visible voxels of a 
-chunk. LOD kicks in at 1024 voxels away, far enough that single voxels are less
-than a single pixel in size at 1080p.
+All voxels are stored in flat arrays, rle compressed when inactive. 
+Level of detail is implemented by "mipmapping" visible voxels of a 
+chunk and grouping geometry by lod level to an octree-like structure to reduce 
+draw calls. LOD kicks in at 1024 voxels away, far enough that single voxels are about a 
+single pixel in size at 1080p.
 
 ### Textures?
 There was support a while back, see the album linked below. The splatter 
@@ -86,11 +82,7 @@ More pretty pictures and history at https://imgur.com/a/6zwciLy
 
 ## Building
 CMAKE Required.
-
-For libraries, either consult CMakeLists.txt and download them all one by one,
-or you can download the following zip file with a copy of the libraries used 
-(make sure contents are in ``./ext/``).
-https://kosshi.net/u/voxplat-0-7-libraries.zip
+Libraries not included.
 
 ### Linux
 ```
