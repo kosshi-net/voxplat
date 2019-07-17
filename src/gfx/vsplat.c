@@ -38,17 +38,8 @@ GLuint vsplat_shader_tex;
 GLuint vsplat_vao;
 
 
-int enable_stencil = 0;
-void command_toggle_stencil( int argc, char **argv ){
-	enable_stencil = !enable_stencil;
-	logf_info("%i", enable_stencil);
-}
-
-
 int gfx_vsplat_init(void)
 {
-	shell_bind_command("toggle_stencil",	&command_toggle_stencil);
-
 	char* vert_src = res_strcpy( splat_vert_glsl  );
 	char* frag_src = res_strcpy( splat_frag_glsl  );
 	vsplat_shader = gfx_create_shader( vert_src, frag_src );
@@ -109,10 +100,11 @@ int gfx_vsplat_init(void)
 	return 0;
 }
 
-void gfx_vsplat_draw( 
+
+void gfx_svl_draw( 
 	struct Camera *cam,
 	struct ChunkSet *set,
-	struct ChunkMD **queue,
+	struct GeometrySVL **queue,
 	uint32_t queue_count,
 	uint32_t *item_count
 ){	
@@ -121,18 +113,8 @@ void gfx_vsplat_draw(
 	ctx_get_window_size( &width, &height  );
 
 	glUseProgram(vsplat_shader);
-	//glBindVertexArray(vsplat_vao);
-	
-
-	if(enable_stencil)	
-	glEnable(GL_STENCIL_TEST);
-	glStencilMask(0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);  
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 
 	glEnable( GL_PROGRAM_POINT_SIZE  );
-
-
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -181,128 +163,173 @@ void gfx_vsplat_draw(
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 
 
-	//uint32_t item_count = 0;
-
-
-	uint32_t upload = 10;
 
 	for( int i = 0; i < queue_count; i++  ){
-		struct ChunkMD *c = queue[i];
+		struct GeometrySVL *g = queue[i];
 
-		if( c->gl_vbo == 0 ) goto skip_draw;
-		if(c->gl_vbo_lod == -1 ) goto skip_draw; // If meshed
+		if( g->vbo == 0 ) continue;
 
 		// RENDER
-		glBindVertexArray(c->gl_vao);
+		glBindVertexArray(g->vao);
 
-		int lod = c->lod;
-		if(lod<0) lod = 0; // Chunk is being meshed for -1, draw meanwhile
+		uint8_t lod = g->lod;
 
 		glUniform1f(
 			vsplat_shader_u_lod,
-			1<<(lod)
+			1<<( lod )
 		);
-
-		uint32_t start = 0;
-		for (int i = 1; i < lod+1; ++i)
-			start += c->gl_vbo_segments[i];
 
 		glDrawArrays( GL_POINTS, 
-			start/4, 
-			c->gl_vbo_segments[lod+1]  /4
+			0, 
+			g->vbo_items/4
 		);
 
-		*item_count += c->gl_vbo_segments[c->lod+1]  / 4;
+		*item_count += g->vbo_items/4;
+
+	}
+}
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
+void gfx_update_svl( 
+	struct ChunkSet *set,
+	uint32_t index
+){	
+
+	struct ChunkMD *c = &set->chunks[ index ];
+
+	glUseProgram(vsplat_shader);
+
+	glBindVertexArray(0);
 
 
-		skip_draw:
-		if(c->gl_vbo_local_items == 0 && c->gl_vbo ){
-			glDeleteBuffers( 1, &c->gl_vbo );
-			c->gl_vbo = 0;
-			//logf_info("Deleted buffer");
+	for (int lod = 0; lod < MAX_LOD_LEVEL; ++lod)
+	{
+		uint16_t octree[3];
+		uint8_t octree_bitw[3];
+		uint16_t cs_min[3];
+		uint16_t cs_max[3];
+		for (int i = 0; i < 3; ++i) {
+			octree_bitw[i] = set->max_bitw[i] - (MIN( lod, set->max_bitw[i] )); // this fucks up
+			octree[i] = c->offset[i] >> lod;
 
-			continue;
+			cs_min[i] = (octree[i]  )	<< lod;
+			cs_max[i] = (octree[i]+1)	<< lod;
+			if( cs_max[i] > set->max[i] ) cs_max[i] = set->max[i];
+		}
+		
+		//if( cs_max[1] > set->max[1] ) cs_max[1] = set->max[1];
+
+
+
+		//uint32_t octree_index = flatten3( octree, octree_bitw );
+		uint32_t octree_index = flatten3( octree, octree_bitw );
+
+		struct GeometrySVL *g = &set->gsvl [ lod ][ octree_index ];
+
+		g->lod = lod;
+	
+		if( g->vbo == 0  ) {
+			glGenVertexArrays(1,&g->vao);
+			glBindVertexArray(   g->vao);
+			glEnableVertexAttribArray(vsplat_shader_aVertex);
+			glEnableVertexAttribArray(vsplat_shader_aColor);
+			glGenBuffers(1, &g->vbo );
+		}
+
+		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+		glBindBuffer( GL_ARRAY_BUFFER, 0 );
+
+		glBindVertexArray(g->vao);
+		
+		glBindBuffer( GL_ARRAY_BUFFER, g->vbo );
+
+		glVertexAttribPointer(
+			vsplat_shader_aVertex, 3, GL_SHORT, GL_FALSE, 
+			4*sizeof(int16_t),
+			NULL
+		);
+		glVertexAttribIPointer(
+			vsplat_shader_aColor, 1, GL_SHORT,
+			4*sizeof(int16_t), 
+			(const void*) (3*sizeof(int16_t))
+		);
+
+		size_t reserve_size = 0;
+
+		uint16_t scan[3];
+		for (scan[0] = cs_min[0]; scan[0] < cs_max[0]; ++scan[0])
+		for (scan[1] = cs_min[1]; scan[1] < cs_max[1]; ++scan[1])
+		for (scan[2] = cs_min[2]; scan[2] < cs_max[2]; ++scan[2])
+		{
+			struct ChunkMD *sub = &set->chunks[flatten3( scan, set->max_bitw )];
+
+			pthread_mutex_lock( &sub->mutex_svl );
+
+			uint32_t upload_items = sub->svl_items[lod];
+
+			if(!upload_items) continue;
+
+			reserve_size += upload_items;
+		}
+
+		// Allocate
+		if(reserve_size)
+		glBufferData(
+			GL_ARRAY_BUFFER, reserve_size*sizeof(uint16_t), NULL, GL_STATIC_DRAW
+		);
+
+		size_t total_items = 0;
+
+		for (scan[0] = cs_min[0]; scan[0] < cs_max[0]; ++scan[0])
+		for (scan[1] = cs_min[1]; scan[1] < cs_max[1]; ++scan[1])
+		for (scan[2] = cs_min[2]; scan[2] < cs_max[2]; ++scan[2])
+		{
+			struct ChunkMD *sub = &set->chunks[flatten3( scan, set->max_bitw )];
+
+			uint32_t upload_items = sub->svl_items[lod];
+
+			if(!upload_items) goto unlock;
+
+			uint32_t upload_start = 0;
+			for (int i = 0; i < lod; ++i) {
+				upload_start += sub->svl_items[i];
+			}
+
+			if( total_items + upload_items > reserve_size ) panic();
+
+			glBufferSubData(
+				GL_ARRAY_BUFFER, 
+				// Offset
+				total_items  * sizeof(int16_t),
+				// Size
+				upload_items * sizeof(int16_t), 
+				// Data
+				&((uint16_t*)sub->svl)[ upload_start ] 
+			);
+
+			total_items += upload_items;
+
+			unlock:
+			pthread_mutex_unlock( &sub->mutex_svl );
+			;
+		}
+
+		g->vbo_items = reserve_size;
+
+		if( reserve_size == 0 ){
+			glDeleteVertexArrays(1, &g->vao);
+			glDeleteBuffers(1, 		&g->vbo);
+			g->vao = 0;
+			g->vbo = 0;
 		}
 
 		glBindVertexArray(0);
-		if( c->gl_vbo_local != NULL ){
-
-		
-			if( c->gl_vbo == 0  ) {
-				if( !c->gl_vao ){
-					glGenVertexArrays(1, &c->gl_vao);
-					glBindVertexArray(c->gl_vao);
-				}
-
-				glEnableVertexAttribArray(vsplat_shader_aVertex);
-				glEnableVertexAttribArray(vsplat_shader_aColor);
-
-				glGenBuffers(1, &c->gl_vbo );
-			}
-
-			glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
-			glBindBuffer( GL_ARRAY_BUFFER, 0 );
-
-			glBindVertexArray(c->gl_vao);
-			
-			glBindBuffer( GL_ARRAY_BUFFER, c->gl_vbo );
-
-			glVertexAttribPointer(
-				vsplat_shader_aVertex, 3, GL_SHORT, GL_FALSE, 
-				4*sizeof(int16_t),
-				NULL
-			);
-			
-			glVertexAttribIPointer(
-				vsplat_shader_aColor, 1, GL_SHORT,
-				4*sizeof(int16_t), 
-				(const void*) (3*sizeof(int16_t))
-			);
-
-			glBufferData(
-				GL_ARRAY_BUFFER, c->gl_vbo_local_items *sizeof(int16_t),
-				c->gl_vbo_local, GL_STATIC_DRAW
-			);
-
-			glBindVertexArray(0);
-
-			//mem_free(c->gl_vbo_local);
-			c->gl_vbo_items = c->gl_vbo_local_items;
-			c->gl_vbo_lod = c->gl_vbo_local_lod;
-			c->gl_vbo_local = NULL;
-
-			for (int i = 0; i < MAX_LOD_LEVEL; ++i)
-				c->gl_vbo_segments[i] = c->gl_vbo_local_segments[i];
-
-		
-			if( c->gl_ibo_local != NULL ){
-			
-				if( c->gl_ibo == 0  ) glGenBuffers(1, &c->gl_ibo );
-				
-				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, c->gl_ibo );
-
-				glBufferData(
-					GL_ELEMENT_ARRAY_BUFFER, c->gl_ibo_local_items *sizeof(int32_t),
-					c->gl_ibo_local, GL_STATIC_DRAW
-				);
-
-				//mem_free(c->gl_ibo_local);
-				c->gl_ibo_items = c->gl_ibo_local_items;
-				c->gl_ibo_local = NULL;
-				
-			}
-			if(c->mesher_lock) 
-				*c->mesher_lock = 0;
-			
-		}
-
 
 	}
 
-	glBindVertexArray(0);
-	
-	glDisable(GL_STENCIL_TEST);
+	c->svl_dirty = 0;
 
+	glBindVertexArray(0);
 	return;
 };
-	

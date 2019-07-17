@@ -15,5 +15,22 @@ void gfx_vsplat_draw(
 	uint32_t queue_count,
 	uint32_t *item_count
 );
-					
+	
+
+
+void gfx_update_svl( 
+	struct ChunkSet *set,
+	uint32_t index
+);
+
+
+void gfx_svl_draw( 
+	struct Camera *cam,
+	struct ChunkSet *set,
+	struct GeometrySVL **queue,
+	uint32_t queue_count,
+	uint32_t *item_count
+);
+
+
 #endif

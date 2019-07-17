@@ -114,7 +114,7 @@ float get_height(struct ChunkSet *set, uint32_t x, uint32_t z){
 		(1-fabs(noise_simplex( x*hz, 0, z*hz))) *
 		(e0+e1+e2);
 
-	float h = ((pow((e0+e1+e2+e3)*a0, 1.2) )*130.0f);
+	float h = ((pow((e0+e1+e2+e3)*a0, 1.23) )*130.0f);
 
 	hz = 5.0;
 	h += 3 * noise_simplex( x*hz, 0, z*hz );
@@ -188,11 +188,15 @@ void chunkset_gen( struct ChunkSet* set )
 	
 	uint32_t done = 0;
 
+	logf_info("Building feature map");
+	event_fire( EVENT_LOCKING_PROGRESS, NULL );
 
 	uint32_t ws_max_x = set->max[0]*set->root;
 	uint32_t ws_max_z = set->max[2]*set->root;
 
 	uint32_t *featuremap = mem_alloc(ws_max_x * ws_max_z * sizeof(uint32_t));
+
+
 
 	#pragma omp parallel for
 	for (int x = 0; x < ws_max_x ; ++x)
@@ -210,21 +214,19 @@ void chunkset_gen( struct ChunkSet* set )
 		hz = 10.0;
 		float var_x = noise_simplex( x*hz, 0, 	z*hz );
 		float var_z = noise_simplex( x*hz, 128, 	z*hz );
-		//chunkset_gen_tree( set, x + 5*var_x, z + 5*var_y );
 
 		uint32_t feat_index = (uint32_t)(x+5*var_x) | (uint32_t)(z+5*var_z) * ws_max_x;
-
 		uint32_t y = featuremap[ feat_index ];
 
 		if( y > 10 && y < 100 ){
 			featuremap[ feat_index ] = featuremap[ feat_index ] | (1 << FEATMAP_TREE_BIT);
-
 			#pragma omp atomic
 			trees++;
 		}
 		
 	}
-	logf_info("%i trees generated", trees);
+	logf_info("%i trees planted", trees);
+	event_fire( EVENT_LOCKING_PROGRESS, NULL );
 
 
 	double last_report = ctx_time()-10.0f;

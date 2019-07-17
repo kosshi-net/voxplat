@@ -20,12 +20,13 @@ struct Config
 
 	size_t 		heap;
 
-
 	float 		sensitivity;
 	float 		speed;
+	float 		fov;
 
 	char 		debug_show_chunk_borders;
-	char 		debug_disable_lod;
+	char 		debug_freeze_lod;
+	char 		debug_freeze_frustum;
 
 	uint32_t 	draw_distance;
 

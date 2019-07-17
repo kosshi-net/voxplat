@@ -21,6 +21,7 @@ struct Camera {
 	float far_plane; // thanks microsoft, can't make it just far!
 
 	float location[3];
+	float lod_origin[3];
 	float yaw;
 	float pitch;
 

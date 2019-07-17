@@ -35,7 +35,7 @@ void gfx_fcull_extract_planes(float* M, float*planes){
 }
 
 
-int gfx_fcull(float*planes, float*loc, float radius){
+int gfx_fcull_visible(float*planes, float*loc, float radius){
 	for(int i = 0; i < 6; ++i){
 		if( vec3dot( &planes[i*4], loc ) + planes[i*4+3] < -radius ){
 			return 0;

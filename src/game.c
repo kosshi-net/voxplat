@@ -118,14 +118,19 @@ void command_speed( int argc, char **argv ){
 	logf_info("%f", cfg_get()->speed);
 }
 
+void command_fov( int argc, char **argv ){
+	if(argc == 2) cfg_get()->fov = atof(argv[1]);
+	logf_info("%f", cfg_get()->fov);
+}
+
 void command_show_chunks( int argc, char **argv ){
 	char *r = &cfg_get()->debug_show_chunk_borders;
 	*r = !*r;
 	logf_info("%i", *r);
 }
 
-void command_debug_mark_near( int argc, char **argv ){
-	char *r = &cfg_get()->debug_disable_lod;
+void command_debug_freeze_lod( int argc, char **argv ){
+	char *r = &cfg_get()->debug_freeze_lod;
 	*r = !*r;
 	logf_info("%i", *r);
 }
@@ -147,6 +152,12 @@ void command_brush_size( int argc, char **argv ){
 
 void command_random_color( int argc, char **argv ){
 	char *r = &cfg_get()->brush_color_random;
+	*r = !*r;
+	logf_info("%i", *r);
+}
+
+void command_freeze_frustum( int argc, char **argv ){
+	char *r = &cfg_get()->debug_freeze_frustum;
 	*r = !*r;
 	logf_info("%i", *r);
 }
@@ -227,17 +238,21 @@ int game_init(){
 
 	shell_bind_command("sensitivity", 			&command_sensitivity);
 	shell_bind_command("speed", 				&command_speed);
+	//shell_bind_command("fov", 					&command_fov);
 
 	shell_bind_command("chunkset_edit", 		&command_chunkset_edit);
 
-	shell_bind_command("chunk_borders",			&command_show_chunks);
-	shell_bind_command("lod",					&command_debug_mark_near);
+	shell_bind_command("show_octree",			&command_show_chunks);
+	shell_bind_command("freeze_lod",			&command_debug_freeze_lod);
 
 	shell_bind_command("brush_size", 			&command_brush_size);
 	shell_bind_command("brush_color",		 	&command_held_voxel);
 	shell_bind_command("brush_random_color",	&command_random_color);
 
 	shell_bind_command("draw_distance",			&command_draw_distance);
+	shell_bind_command("freeze_frustum",		&command_freeze_frustum);
+
+	
 
 	gfx_vsplat_init();
 	gfx_vmesh_init();
@@ -254,7 +269,7 @@ int game_init(){
 	cam.location[1] = 128.0;
 	cam.location[2] = 64.0;
 
-	cam.fov =  90.0f;
+	cam.fov = cfg_get()->fov;
 	cam.far_plane = 1024*2;
 
 	renderer = (char*)glGetString(GL_RENDERER);
@@ -263,9 +278,120 @@ int game_init(){
 
 	last_time = ctx_time();
 	return 0;
+
 }
 
 
+
+
+uint32_t 		 	 queue_misc[0xFFFF];
+uint32_t 			 queue_misc_count = 0;
+
+struct GeometrySVL 	*queue_gsvl[0xFFFF];
+uint32_t 			 queue_gsvl_count = 0;
+
+struct GeometryMesh	*queue_mesh[0xFFFF];
+uint32_t 			 queue_mesh_count = 0;
+
+uint32_t 			 debug_walks = 0;
+
+
+
+void push_octree_aabb( uint16_t *octree, uint8_t lod ){
+	float min[3];
+	float max[3];
+
+	for (int i = 0; i < 3; ++i){
+		min[i] = octree[i]     << lod;
+		max[i] = (octree[i]+1) << lod;
+	}
+
+	gfx_aabb_push( 
+		min, max
+	);
+}
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
+void octree_cull(
+	struct ChunkSet *set,
+	uint8_t lod,
+	uint8_t x,
+	uint8_t y,
+	uint8_t z
+	//struct ChunkMD **queue
+){
+	debug_walks++;
+
+	uint16_t ws_root = set->root<<lod;
+
+	float center[] = {
+		(x*ws_root) + ( ws_root/2 ),
+		(y*ws_root) + ( ws_root/2 ),
+		(z*ws_root) + ( ws_root/2 )
+	};
+	//printf("%f %f %f\n", center[0], center[1] , center[2]);
+
+
+	if( (x<<lod) >= set->max[0] ) return;
+	if( (y<<lod) >= set->max[1] ) return;
+	if( (z<<lod) >= set->max[2] ) return;
+
+
+	if( !gfx_fcull_visible(
+		cam.frustum_planes, 
+		center,
+		ws_root*0.85) 
+	) return;
+
+	float distance = glm_vec_distance( cam.lod_origin, center );
+
+	//if( distance > (pow(lod,2))*700
+	if( distance > lod*(1024)-256 ){
+	
+		uint8_t octree_bitw[3];
+		for (int i = 0; i < 3; ++i)
+			octree_bitw[i] = set->max_bitw[i] - MIN(lod, set->max_bitw[i]);
+
+		struct GeometrySVL *g = &set->gsvl [ lod ][  
+			flatten3( (uint16_t[]){x,y,z}, octree_bitw )  
+		];
+
+		if( lod == 0 ){
+			uint32_t index = flatten3( (uint16_t[]){x,y,z}, set->max_bitw ) ;
+			struct GeometryMesh *m = &set->gmesh[ index ];
+			if( m->vbo ) {
+				queue_mesh[queue_mesh_count++] = m;
+				queue_misc[queue_misc_count++] = index;
+				return; 
+			}
+			// if no mesh vbo, fall thru and use SVL
+		}
+
+		if( !g->vbo ) return;
+
+		if( cfg_get()->debug_show_chunk_borders )
+		push_octree_aabb( (uint16_t[]){x,y,z}, lod+set->root_bitw );
+
+		queue_gsvl[queue_gsvl_count++] = g;
+
+		return;
+	}
+
+	lod--;
+	for (int nx = 0; nx < 2; ++nx)
+	for (int ny = 0; ny < 2; ++ny)
+	for (int nz = 0; nz < 2; ++nz){
+		octree_cull( set, lod, 
+			(x * 2) + nx, 
+			(y * 2) + ny,
+			(z * 2) + nz
+		);
+	}
+}
+
+float blocked_for = 0;
+float unblock_until = 0;
 
 void game_tick(){
 
@@ -288,6 +414,7 @@ void game_tick(){
 	//
 
 	cam.far_plane = cfg_get()->draw_distance;
+	cam.fov =  cfg_get()->fov;
 
 	double cur_x, cur_y;
 	ctx_cursor_movement( &cur_x, &cur_y  );
@@ -357,56 +484,43 @@ void game_tick(){
 		cam.inv_proj_view_rot
 	);
 
+	if( !cfg_get()->debug_freeze_frustum )
 	gfx_fcull_extract_planes( 
 		(float*)cam.view_projection,
 		cam.frustum_planes
 	);
 
+	if( !cfg_get()->debug_freeze_lod ) {
+		memcpy( cam.lod_origin, cam.location, sizeof(float)*3 );
+	}
+
+
 	//
 	// Create draw queue and set LOD levels
 	//
 
+	float cull_time = ctx_time();
+
 	uint32_t splat_count = 0;
 	uint32_t vertex_count = 0;
 
-	struct ChunkMD *chunk_draw_queue[0xFFFF];
-	uint32_t 		chunk_draw_queue_count = 0;
-	// Separate queue for lod -1 ?
 
-	for( int i = 0; i < set->count; i++  ){
-		struct ChunkMD *c = &set->chunks[i];
+	queue_gsvl_count = 0;
+	queue_mesh_count = 0;
+	queue_misc_count = 0;
 
-		float cwp[3]; // Chunk world position
-		float here[3];
-		for (int i = 0; i < 3; ++i){
-			cwp[i] = (c->offset[i] * set->root + set->root/2.0f);
-			here[i] = cam.location[i];
-		}
-		float distance = glm_vec_distance( here, cwp );
-		if( !cfg_get()->debug_disable_lod ){
-			c->lod = 0;
-
-			if(distance < 128.0) c->lod = -1; // Meshed
-
-			if(distance > 1024.0*1)	c->lod++;
-			if(distance > 1024.0*2) c->lod++;
-			if(distance > 1024.0*4) c->lod++;
-			if(distance > 1024.0*6) c->lod++;
-		}
-		
-		// Send for rendering anyway. Rendering loop also uploads
-		if( c->mesher_lock && *c->mesher_lock ) goto push;
-
-		if( !c->gl_vbo && !c->gl_vbo_local) 				continue;
-		//if( c->gl_vbo_local_items == 0 )					continue;
-
-		// Frustum cull
-		if( distance > cam.far_plane+set->root )					continue;
-		if( !gfx_fcull(cam.frustum_planes, cwp, set->root*0.85) ) 	continue;
-
-		push:
-		chunk_draw_queue[chunk_draw_queue_count++] = c;
+	debug_walks=0;
+	uint16_t cs[3];
+	//for (cs[0] = 0; cs[0] < (set->max[0]>>4); ++cs[0])
+	//for (cs[1] = 0; cs[1] < (set->max[0]>>4); ++cs[1])
+	//for (cs[2] = 0; cs[2] < (set->max[2]>>4); ++cs[2]){
+	for (cs[0] = 0; cs[0] < (set->max[0]>>4)+1; ++cs[0])
+	for (cs[1] = 0; cs[1] < (set->max[1]>>4)+1; ++cs[1])
+	for (cs[2] = 0; cs[2] < (set->max[2]>>4)+1; ++cs[2]){
+		octree_cull( set, 4, cs[0], cs[1], cs[2] );
 	}
+
+	cull_time = ctx_time() - cull_time;
 
 	//
 	// Render!
@@ -414,60 +528,157 @@ void game_tick(){
 
 	glClearColor( 0.5, 0.5, 0.7, 1.0  );
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS); 
 
 	gfx_sky_draw(&cam);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	glEnable( GL_PROGRAM_POINT_SIZE  );
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glDisable( GL_CULL_FACE );
+	glCullFace( GL_BACK );
+
 
 	gfx_vmesh_draw(
 		&cam,
 		set,
-		chunk_draw_queue,
-		chunk_draw_queue_count,
+		queue_mesh,
+		queue_mesh_count,
 		&vertex_count
 	);
-	gfx_vsplat_draw(
+
+	gfx_svl_draw(
 		&cam,
 		set,
-		chunk_draw_queue,
-		chunk_draw_queue_count,
+		queue_gsvl,
+		queue_gsvl_count,
 		&splat_count
 	);
 
-	//
-	// Draw chunk AABB wireframes
-	//
-
 	if( cfg_get()->debug_show_chunk_borders ){
+		gfx_aabb_draw( 
+			&cam,
+			(float[]){0.3, 0.3, 0.3, 1.0}
+		);
+			
+		for( int i = 0; i <     queue_misc_count; i++  ){
+			struct ChunkMD *c = &set->chunks[ queue_misc[i] ];
 
-		for (int j = 0; j < 2; ++j)
-		{
-			for( int i = 0; i < chunk_draw_queue_count; i++  ){
-				struct ChunkMD *c = chunk_draw_queue[i];
-
-				if(j){
-					if( c->lod > -1 ) continue;
-				}
-				else{
-					if( c->lod == -1 ) continue;
-				}
-
-				float min[3];
-				float max[3];
-				for (int i = 0; i < 3; ++i){
-					min[i] = c->offset[i]*set->root + 		0.1;
-					max[i] = (c->offset[i]+1)*set->root  - 	0.1;
-				}
-				gfx_aabb_push( 
-					min, max
-				);
+			float min[3];
+			float max[3];
+			for (int i = 0; i < 3; ++i){
+				min[i] = c->offset[i]*set->root + 		0.1;
+				max[i] = (c->offset[i]+1)*set->root  - 	0.1;
 			}
-			gfx_aabb_draw( 
-				&cam,
-				(float[]){1.0, (float)j, 1.0, 1.0}
+			gfx_aabb_push( 
+				min, max
 			);
 		}
+		gfx_aabb_draw( 
+			&cam,
+			(float[]){1.0, 0.0, 1.0, 1.0}
+		);
+	
 	}
+
+	//
+	// Upload
+	//
+	// Implements delaying uploads if multiple chunks are changing nearby
+	// to avoid voids between chunks
+
+	#define MAX_UPLOADS 16
+
+	uint32_t qm[MAX_UPLOADS];
+	uint32_t qm_c = 0; 
+
+	uint32_t qs [MAX_UPLOADS];
+	uint32_t qs_c = 0;
+
+	uint8_t block_upload = 0;
+
+	uint32_t geometry_items = 0;
+
+	for( int i = 0; i < set->count; i++  ){
+		struct ChunkMD *c = &set->chunks[i];
+
+		geometry_items += c->svl_items_total;
+
+		float chunk_center_ws[3];
+		for (int i = 0; i < 3; ++i) 
+			chunk_center_ws[i] = (c->offset[i] << set->root_bitw) + (set->root/2);
+
+		float distance = glm_vec_distance( chunk_center_ws, cam.lod_origin );
+
+		uint8_t new_value = distance < 128;
+
+
+		// help
+		if( c->make_mesh != new_value ){
+			c->make_mesh = new_value;
+			c->remesh = 1;
+		}
+		if( distance > 256 ) {
+			if( c->svl_dirty ) {
+				gfx_update_svl( set, i );
+				if( c->mesh_has_vbo ) {
+					gfx_delete_mesh( set, i );
+					c->mesh_has_vbo = 0;
+				}
+			}
+			if( c->mesh_dirty ) {
+				if( c->no_geometry ) {
+					gfx_delete_mesh( set, i );
+				} else {
+					gfx_update_mesh( set, i );
+					c->mesh_has_vbo = 1;
+				}
+			}
+		} else {
+			if( c->dirty || c->changing ) block_upload = 1;
+			if( c->svl_dirty && qs_c < MAX_UPLOADS )
+				qs[ qs_c++ ] = i;
+			if( c->mesh_dirty && qm_c < MAX_UPLOADS )
+				qm[ qm_c++ ] = i;
+		}
+	}
+
+	// If blocked for too long, disable blocking
+	if((block_upload && blocked_for > 0.1) 
+	|| (block_upload && unblock_until > now ) 
+	){
+		blocked_for = 0;
+		block_upload = 0;
+		unblock_until = now + 0.1;
+	}
+
+	if(!block_upload){
+		for (int i = 0; i < qs_c; ++i){
+			struct ChunkMD *c = &set->chunks[qs[i]];
+			gfx_update_svl( set, qs[i] );
+			if( c->mesh_has_vbo ) {
+				gfx_delete_mesh( set, qs[i] );
+				c->mesh_has_vbo = 0;
+			}
+			
+		}
+		for (int i = 0; i < qm_c; ++i){
+			struct ChunkMD *c = &set->chunks[qm[i]];
+			if( c->no_geometry ) {
+				gfx_delete_mesh( set, qm[i] );
+			} else {
+				gfx_update_mesh( set, qm[i] );
+				c->mesh_has_vbo = 1;
+			}
+		}
+	}else{
+		blocked_for += delta;
+	}
+
 
 	//
 	// World editing 
@@ -525,10 +736,12 @@ void game_tick(){
 			"%s %s.%s (c) kosshi.net\n%s\n"
 			"Splatted %.2f M voxels (%.2f Bv/s)\n"
 			"Other    %.2f M vertices\n"
-			"Queue    %i / %i\n"
-		//	"VRAM %.2f MB\n"
-			"%li MB Dynamic\n"
-			"%.3f %.3f %.3f",
+			"Queue    %i / %i (%i nodes in %.1f ms)\n"
+			"RAM      %li / %li MB (SVL %li MB)\n"
+			""
+			"X: %.2f\n"
+			"Y: %.2f\n"
+			"Z: %.2f\n",
 		
 		fps, capped, delta*1000,
 		PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR,
@@ -536,8 +749,13 @@ void game_tick(){
 		splat_count / 1000000.0f,
 		1/delta * splat_count / 1000000000,
 		vertex_count / 1000000.0f,
-		chunk_draw_queue_count, set->count,
-		mem_dynamic_allocation() / 1024 / 1024,
+		queue_gsvl_count, set->count, debug_walks, cull_time*1000,
+
+		mem_dynamic_allocation() >> 20,
+		cfg_get()->heap >> 20,
+
+		geometry_items * sizeof(uint16_t) >> 20,
+
 		cam.location[0], cam.location[1], cam.location[2]
 	);
 

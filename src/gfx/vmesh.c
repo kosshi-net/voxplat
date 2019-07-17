@@ -99,7 +99,7 @@ int gfx_vmesh_init(void)
 void gfx_vmesh_draw( 
 	struct Camera *cam,
 	struct ChunkSet *set,
-	struct ChunkMD **queue,
+	struct GeometryMesh **queue,
 	uint32_t queue_count,
 	uint32_t *item_count
 ){	
@@ -110,17 +110,6 @@ void gfx_vmesh_draw(
 	glUseProgram(vmesh_shader);
 	glBindVertexArray(vmesh_vao);
 
-
-	glEnable( GL_PROGRAM_POINT_SIZE  );
-
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS); 
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	glDisable( GL_CULL_FACE );
-	glCullFace( GL_BACK );
 
 
 	glUniformMatrix4fv(
@@ -154,33 +143,119 @@ void gfx_vmesh_draw(
 
 	//uint32_t item_count = 0;
 
-	//for( int i = 0; i < set->count; i++  ){
-	//	struct ChunkMD *c = &set->chunks[i];
 	for( int i = 0; i < queue_count; i++  ){
-		struct ChunkMD *c = queue[i];
+		struct GeometryMesh *g = queue[i];
 	
+		if( g->vbo == 0 ) continue;
 
-		if( c->gl_vbo == 0 ) continue;
-		if(c->gl_vbo_lod > -1) continue;
-
-		glBindVertexArray(c->gl_vao);
-		// RENDER
+		glBindVertexArray(g->vao);
 	
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, c->gl_ibo);
-
-		glBindBuffer(GL_ARRAY_BUFFER, c->gl_vbo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 	g->ibo);
+		glBindBuffer(GL_ARRAY_BUFFER, 			g->vbo);
 		
  		glDrawElements(
  		    GL_TRIANGLES,
- 		    c->gl_ibo_items,
+ 		    g->ibo_items,
  		    GL_UNSIGNED_INT,
  		    0
  		);
-		*item_count += c->gl_ibo_items;
+		*item_count += g->ibo_items;
 	}
 	glBindVertexArray(0);
 	
 
 	return;
 };
+
+
+
+void gfx_update_mesh( 
+	struct ChunkSet *set,
+	uint32_t index
+){
+
+	glBindVertexArray(0);
+
+	struct ChunkMD *c = &set->chunks[index];
+	struct GeometryMesh *g = &set->gmesh[index];
+
+	if( g->vbo == 0  ) {
+		glGenVertexArrays(1, &g->vao);
+		glBindVertexArray(	  g->vao);
+
+		glEnableVertexAttribArray(vmesh_shader_aVertex);
+		glEnableVertexAttribArray(vmesh_shader_aColor);
+
+		glGenBuffers(1, &g->vbo );
+		glGenBuffers(1, &g->ibo );
+	}
+
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 	0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 			0 );
+
+	glBindVertexArray(g->vao);
 	
+	glBindBuffer( GL_ARRAY_BUFFER, g->vbo );
+
+	glVertexAttribPointer(
+		vmesh_shader_aVertex, 3, GL_SHORT, GL_FALSE, 
+		4*sizeof(int16_t),
+		NULL
+	);
+	
+	glVertexAttribIPointer(
+		vmesh_shader_aColor, 1, GL_SHORT,
+		4*sizeof(int16_t), 
+		(const void*) (3*sizeof(int16_t))
+	);
+
+	glBufferData(
+		GL_ARRAY_BUFFER, c->mesh_vbo_items *sizeof(int16_t),
+		c->mesh_vbo, GL_STATIC_DRAW
+	);
+
+	glBindVertexArray(0);
+
+	g->vbo_items = c->mesh_vbo_items;
+	
+	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, g->ibo );
+
+	glBufferData(
+		GL_ELEMENT_ARRAY_BUFFER, c->mesh_ibo_items *sizeof(int32_t),
+		c->mesh_ibo, GL_STATIC_DRAW
+	);
+
+	g->ibo_items = c->mesh_ibo_items;
+
+	c->mesh_dirty = 0;
+
+	glBindVertexArray(0);
+
+	return;
+};
+
+
+void gfx_delete_mesh( 
+	struct ChunkSet *set,
+	uint32_t index
+){
+
+	glBindVertexArray(0);
+
+	struct ChunkMD *c = &set->chunks[index];
+	struct GeometryMesh *g = &set->gmesh[index];
+
+	if( g->vbo ) {
+		glDeleteBuffers(1, &g->vbo );
+		glDeleteBuffers(1, &g->ibo );
+		glDeleteVertexArrays(1, &g->vao);
+
+		g->vbo = 0;
+		g->ibo = 0;
+		g->vao = 0;
+
+	}
+
+	c->mesh_dirty = 0;
+	return;
+};

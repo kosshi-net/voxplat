@@ -74,6 +74,11 @@ chunkset_create( uint8_t root_bitw, uint8_t max_bitw[] )
 	set->chunks = (void*)set + sizeof(struct ChunkSet);
 //	set->chunks = mem_calloc( sizeof( struct ChunkMD ) * chunk_count  );
 	
+	for (int i = 0; i < MAX_LOD_LEVEL; ++i)
+		set->gsvl[i] = mem_calloc( sizeof( struct GeometrySVL ) * chunk_count );
+
+	set->gmesh = mem_calloc( sizeof( struct GeometryMesh ) * chunk_count );
+	
 	return set;
 }
 
@@ -101,15 +106,14 @@ void chunkset_clear( struct ChunkSet *set )
 
 		pthread_mutex_init(&c->mutex_read, NULL);
 		pthread_mutex_init(&c->mutex_write, NULL);
+		pthread_mutex_init(&c->mutex_svl, NULL);
 
-		c->lod = -2;
 		c->last_access = ctx_time();
 		c->count = num_voxels;
 
 		memcpy( c->offset, vec, 3*sizeof(uint16_t) );
 
-		c->dirty = 1;		
-		c->gl_vbo =  0;
+		c->dirty = 1;
 		c->rle = set->null_chunk->rle;
 
 		i++;
@@ -274,11 +278,28 @@ void chunkset_manage(
 			continue;
 		}
 
+
+		// Ignore everything above
+
+
 		struct ChunkMD *c = &set->chunks[i];
 
-		if( c->dirty == 0 
-		&& (c->gl_vbo_local_lod>-1) == (c->lod>-1) // If types differ
-		){
+		// Dont mesh if previous geometry still not uploaded
+		if( c->svl_dirty || c->mesh_dirty ) continue;
+
+
+		c->remesh = c->remesh | c->dirty;
+		if( c->remesh == 0 ){
+
+			if( !c->mesh_dirty
+			&&	 c->mesh_vbo 
+			){
+				c->mesh_vbo = mem_free(c->mesh_vbo);
+				c->mesh_ibo = mem_free(c->mesh_ibo);
+			}
+
+
+			// COMPRESS
 			if( c->voxels
 			&&	c->last_access+1.0 < ctx_time() 
 			){ 
@@ -288,20 +309,18 @@ void chunkset_manage(
 			}
 			continue;
 		}
-
-		if( c->lod == -2 ) continue;
-		if( c->gl_vbo_local ) continue;
-
-		// Chunk passed all checks, mesh!
-
-		// Dont mesh too fast
+		// Dont mesh or access too fast
 		if(c->last_meshing+0.100 > ctx_time() ) continue;
+
+		c->changing = c->dirty;
+		c->dirty = 0;
+		c->remesh = 0;
+
+		// Mesh, something
 		c->last_meshing = ctx_time();
 
 		chunk_open_ro(set, c);
 
-		c->dirty = 0;
-		c->gl_vbo_local_lod = c->lod;
 
 		memset( mesher[omp_id].work[buf_id], 0, 
 				mesher[omp_id].work_size );
@@ -314,7 +333,12 @@ void chunkset_manage(
 
 		uint32_t geom_items = 0; 
 		uint32_t indx_items = 0; 
-		if( c->lod == -1 ) {
+
+		uint32_t temp_lo_vbo_segments[ MAX_LOD_LEVEL ] = {0};
+
+		uint8_t clear_svl = 0;
+
+		if( c->make_mesh ) {
 			//double t = ctx_time();
 			 chunk_make_mesh(
 				set, c, 
@@ -323,11 +347,31 @@ void chunkset_manage(
 			);
 			//t = ctx_time()-t;
 			//logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);
+
+			if( c->mesh_vbo ) mem_free( c->mesh_vbo );
+			c->mesh_vbo_items = geom_items;
+			c->mesh_vbo = mem_alloc( c->mesh_vbo_items * sizeof(uint16_t) );
+			memcpy(   
+				c->mesh_vbo,
+				mesher[omp_id].geom[buf_id],
+				c->mesh_vbo_items * sizeof(uint16_t)
+			);
+
+			if( c->mesh_ibo ) mem_free( c->mesh_ibo );
+			c->mesh_ibo_items = indx_items;
+			c->mesh_ibo = mem_alloc( c->mesh_ibo_items * sizeof(uint32_t) );
+			memcpy(   
+				c->mesh_ibo,
+				mesher[omp_id].work[buf_id],
+				c->mesh_ibo_items * sizeof(uint32_t)
+			);
+
+			clear_svl = c->no_geometry = !geom_items;
+			c->mesh_dirty = 1;
+
 		} else {
 
 			chunk_make_mask( set, c, mesher[omp_id].mask[buf_id] );
-
-			c->gl_vbo_local_segments[0] = 0;
 
 			uint32_t geom_items2 = 0;
 
@@ -339,7 +383,7 @@ void chunkset_manage(
 					mesher[omp_id].geom[buf_id], 
 					&geom_items
 				);
-				c->gl_vbo_local_segments[1] = geom_items;
+				temp_lo_vbo_segments[0] = geom_items;
 
 
 
@@ -355,7 +399,7 @@ void chunkset_manage(
 					&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
 					&geom_items2
 				);
-				c->gl_vbo_local_segments[2] = geom_items2;
+				temp_lo_vbo_segments[1] = geom_items2;
 				geom_items+=geom_items2;
 
 
@@ -374,7 +418,7 @@ void chunkset_manage(
 					&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
 					&geom_items2
 				);
-				c->gl_vbo_local_segments[3] = geom_items2;
+				temp_lo_vbo_segments[2] = geom_items2;
 				geom_items+=geom_items2;
 				
 
@@ -393,10 +437,10 @@ void chunkset_manage(
 					&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
 					&geom_items2
 				);
-				c->gl_vbo_local_segments[4] = geom_items2;
+				temp_lo_vbo_segments[3] = geom_items2;
 				geom_items+=geom_items2;
 
-
+				
 				memset( mesher[omp_id].mask[buf_id], 0, mesher[omp_id].mask_size );
 				chunk_mask_downsample( set, 4, 
 					mesher[omp_id].work[buf_id],
@@ -410,24 +454,53 @@ void chunkset_manage(
 					&mesher[omp_id].geom[buf_id][geom_items*sizeof(uint16_t)], 
 					&geom_items2
 				);
-				c->gl_vbo_local_segments[5] = geom_items2;
+				temp_lo_vbo_segments[4] = geom_items2;
 				geom_items+=geom_items2;
+				
 			}
 			// TEMP CODE TEMP CODE	
+
+			pthread_mutex_lock( &c->mutex_svl );
+
+			c->no_geometry = !geom_items;
+			clear_svl = c->no_geometry;
+			if( !clear_svl ) {
+
+				for (int i = 0; i < MAX_LOD_LEVEL; ++i)
+					c->svl_items[i] = temp_lo_vbo_segments[i];
+
+				if( c->svl ) 
+					c->svl = mem_free( c->svl );
+			
+				c->svl = mem_alloc( geom_items*sizeof(uint16_t) );
+		
+				memcpy(c->svl, 
+					mesher[omp_id].geom[buf_id],
+					geom_items*sizeof(uint16_t)
+				);
+				
+
+				c->svl_items_total = geom_items;
+				c->svl_dirty = 1;
+
+			}
+			pthread_mutex_unlock( &c->mutex_svl );
+
 		}
 
-		c->gl_vbo_local_items = geom_items;
-		c->gl_ibo_local_items = indx_items;
+		if( clear_svl ){
+			pthread_mutex_lock( &c->mutex_svl );
 
-		if( indx_items > 0 ){
-			c->gl_ibo_local = mesher[omp_id].work[buf_id];
-		}
-		if( geom_items > 0  ){
-			mesher[omp_id].lock[buf_id]++;
-			c->mesher_lock = &mesher[omp_id].lock[buf_id];
-			c->gl_vbo_local = mesher[omp_id].geom[buf_id];
+			if( c->svl ) c->svl = mem_free( c->svl );
+			memset( c->svl_items, 0, sizeof( temp_lo_vbo_segments ) );
+
+			c->svl_items_total = 0;
+			c->svl_dirty = 1;
+
+			pthread_mutex_unlock( &c->mutex_svl );
 		}
 
+		c->changing = 0;
 		chunk_close_ro(set, c);
 		meshed_count++;
 	}

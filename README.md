@@ -4,12 +4,14 @@ A hybrid voxel rendering engine, written with C and OpenGL. The goal of this
 project is to make a voxel engine capable of rendering huge fully destructible 
 scenes on reasonable desktop hardware. And maybe eventually a game.
 
-8192x512x8192 map with over 120 000 trees, rendered at 1920x1080 130fps on 
-Radeon RX 480. Using 128^3 chunks, 4 GB peak ram usage, FPS limited by draw calls.
+ Using 128^3 chunks, 4 GB peak ram usage, FPS limited by draw calls.
 
-![Pretty picture](img/1.png?raw=true)
-![Pretty picture](img/2.png?raw=true)
-![Pretty picture](img/3.png?raw=true)
+
+16384 x 256 x 16384 map
+
+![Pretty picture](img/5.png?raw=true)
+![Pretty picture](img/4.png?raw=true)
+
 
 ## Rendering method
 This is achieved with OpenGL splatting, basically rendering quads and ray-aabb
@@ -72,8 +74,10 @@ Use OpenGL compatability mode. Might help if you have trouble running the engine
 - Builds on Linux and Windows (with MinGW)
 
 Some pictures:
+
+![Pretty picture](img/1.png?raw=true)
+![Pretty picture](img/3.png?raw=true)
 ![Pretty picture](https://i.imgur.com/ytUnnra.jpg)
-![Pretty picture](https://i.imgur.com/BmAt7jr.jpg)
 ![Pretty picture](https://i.imgur.com/Gw4Vdu5.jpg)
 More pretty pictures and history at https://imgur.com/a/6zwciLy
 

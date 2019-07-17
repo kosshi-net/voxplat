@@ -55,15 +55,16 @@ void cfg_init( int argc, char **argv ){
 
 	// Set defaults and stuff
 	config.chunk_size 		= 6;
-	config.heap 			= parse_long( "512M" );
+	config.heap 			= parse_long( "1G" );
 	config.sensitivity		= 0.15;
 	config.speed			= 75.0;
+	config.fov				= 90.0;
 	config.draw_distance	= 1024*4;
 	config.brush_color		= 63;
 	config.brush_size		= 4;
 
 	uint32_t default_chunk_size = 64;
-	uint32_t default_world_size[] = { 2048, 256, 2048 };
+	uint32_t default_world_size[] = { 2048, 512, 2048 };
 
 	for (int i = 1; i < argc; ++i)
 	{

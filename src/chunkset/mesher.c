@@ -346,6 +346,17 @@ void chunk_make_mask(
 		cvec[i]--;
 	}
 
+	if( cp->rle == setp->null_chunk->rle ){
+		logf_info("Skip?");
+		for (int i = 0; i < 3; ++i){
+			if( nc[i].voxels != setp->null_chunk->voxels ) goto no_null;
+		}
+		logf_info("Skip");
+		return;
+	}
+	no_null:;
+
+
 	uint16_t r = set.root-1;
 	uint16_t AC[3];
 	uint32_t Ai = 0;

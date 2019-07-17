@@ -11,9 +11,21 @@ int  gfx_vmesh_init(void);
 void gfx_vmesh_draw( 
 	struct Camera *cam,
 	struct ChunkSet *set,
-	struct ChunkMD **queue,
+	struct GeometryMesh **queue,
 	uint32_t queue_count,
 	uint32_t *item_count
 );
-					
+
+
+void gfx_update_mesh( 
+	struct ChunkSet *set,
+	uint32_t index
+);
+
+
+void gfx_delete_mesh( 
+	struct ChunkSet *set,
+	uint32_t index
+);
+
 #endif

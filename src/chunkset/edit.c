@@ -188,7 +188,7 @@ void chunkset_edit_sphere(
 	int32_t ws_max[3];
 
 	for (int i = 0; i < 3; ++i){
-		ws_min[i] = ws[i]-radius+1;
+		ws_min[i] = ws[i]-radius-1;
 		ws_max[i] = ws[i]+radius+1;
 	}
 
