@@ -149,7 +149,7 @@ void shell_send(){
 	_log_info( tb );
 	
 	// Split and fill argv
-	char* argv[SHELL_INPUT_SIZE/2];
+	char *argv[SHELL_INPUT_SIZE/2];
 	int32_t size = SHELL_INPUT_SIZE; 
 	argv[1] = argv[0] = mem_alloc( size );
 	uint8_t argc = 1;

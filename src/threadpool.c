@@ -29,8 +29,6 @@ void* worker_loop( void*a ){
 	struct Task task;
 	while( 1 ) {
 
-
-
 		pthread_mutex_lock(&task_mutex);
 
 		if (task_queue_tail == task_queue_head){

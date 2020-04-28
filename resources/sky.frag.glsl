@@ -21,7 +21,7 @@ vec3 ss2wsVec(float x, float y){
 void main(void) {
 
 	//vec3 light = normalize( vec3(0.0, -1.0, 0.0)  );
-	vec3 light = normalize( vec3(1.0, 1.0, 1.0)  );
+	vec3 light = normalize( vec3(-1.0, 1.0, 0.0)  );
 	
 	vec3 ray = ss2wsVec(
 		gl_FragCoord.x/uViewport.x, 

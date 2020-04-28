@@ -1,87 +1,11 @@
 
 // TEMP FILE TEMP FILE
 
-#ifndef SHADOW_H
-#define SHADOW_H
-
-
-/*
- * NEW API
- * shadow_init( set )
- * shadow_sample( xyz, normal )
- * shadow_place_update()
- *
- * stubs
- * shadow_break_update();
- *
- * 
- * Normal is 0 for X, 1 for Y
- *
- */
 
 
 
-void shadow_init(
-	struct ChunkSet *set
-){
+// This shadow stuff is very work in progress and ugly!
 
-	uint32_t wsy = (set->max[1] << set->root_bitw);
-
-	set->shadow_map_size[0] = ((set->max[0] << set->root_bitw) + wsy );
-	set->shadow_map_size[1] = (set->max[2] << set->root_bitw);
-
-	set->shadow_map_length = 
-		set->shadow_map_size[0] * 
-		set->shadow_map_size[1];
-
-	set->shadow_map = mem_alloc( 
-		set->shadow_map_length *
-		sizeof(uint16_t)
-	);
-}
-
-uint32_t shadow_index(
-	struct ChunkSet *set,
-	uint32_t ws[3]
-){
-	uint32_t max_x = set->shadow_map_size[0];
-	return (ws[0] + ws[1]) + ( max_x * ws[2] );
-}
-
-// returns 1 if in shadow
-int shadow_sample( 
-	struct ChunkSet *set,
-	uint32_t *ws
-){
-	uint32_t index = shadow_index( set, ws );
-	return !(set->shadow_map[ index ] < ws[1]+1);
-}
-
-void shadow_place_update(
-	struct ChunkSet *set,
-	uint32_t *ws
-){
-	// If voxel shaded, dont do anything
-	if( shadow_sample( set, ws ) ) return;
-
-	uint32_t index = shadow_index( set, ws );
-	set->shadow_map[ index   ] = ws[1];
-	//set->shadow_map[ index+1 ] = ws[1];
-	
-	return;
-}
-
-void shadow_break_update(
-	struct ChunkSet *set,
-	uint32_t *ws
-){
-	// stub
-	return;
-}
-
-
-
-/*
 uint32_t shadow_map_index( 
 	struct ChunkSet *set, 
 	uint32_t x, 
@@ -226,7 +150,3 @@ void chunkset_create_shadow_map(
 	}
 
 }
-
-*/
-
-#endif

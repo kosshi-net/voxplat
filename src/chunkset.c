@@ -29,7 +29,7 @@
 
 
 struct ChunkSet * 
-chunkset_create( uint8_t root_bitw, uint8_t max_bitw[] )
+chunkset_create( uint8_t root_bitw, uint8_t max_bitw[3] )
 {	
 	uint16_t max[3] = {
 		1 << max_bitw[0],
@@ -121,22 +121,12 @@ void chunkset_clear( struct ChunkSet *set )
 }
 
 
-uint32_t flatten3( const uint16_t* l, const uint8_t* b ) {
-	uint32_t i = l[2];
-	i <<= b[1];
-	i  |= l[1];
-	i <<= b[0];
-	i  |= l[0];
-	return i;
+uint32_t flatten3( const uint16_t l[3], const uint8_t b[3] ) {
+	return ( l[2] << b[1] | l[1]) << b[0] | l[0];
 }
 
-uint32_t flatten1( const uint16_t* l, const uint8_t b ) {
-	uint32_t i = l[2];
-	i <<= b;
-	i  |= l[1];
-	i <<= b;
-	i  |= l[0];
-	return i;
+uint32_t flatten1( const uint16_t l[3], const uint8_t b ) {
+	return ( l[2] << b | l[1]) << b | l[0];
 }
 
 
@@ -228,8 +218,14 @@ void chunk_compress(struct ChunkSet *set, struct ChunkMD *c){
 	} else if( c->rle ) {
 		c->voxels = mem_free(c->voxels);
 	} else {
+
 		c->rle = rle_compress(c->voxels, c->count);
 		c->voxels = mem_free(c->voxels);
+	
+		if( *((uint32_t*)c->rle) == *((uint32_t*)set->null_chunk->rle) ){
+			c->rle = mem_free(c->rle);
+			c->rle = set->null_chunk->rle;
+		}
 	}
 }
 
@@ -339,14 +335,14 @@ void chunkset_manage(
 		uint8_t clear_svl = 0;
 
 		if( c->make_mesh ) {
-			//double t = ctx_time();
+			double t = ctx_time();
 			 chunk_make_mesh(
 				set, c, 
 				mesher[omp_id].geom[buf_id], &geom_items, 
 				mesher[omp_id].work[buf_id], &indx_items
 			);
-			//t = ctx_time()-t;
-			//logf_info("Meshing time: %i ms (%i)", (int)(t*1000), geom_items);
+			t = ctx_time()-t;
+			//logf_info("Meshing time: %f ms (%i)", (t*1000.0), geom_items);
 
 			if( c->mesh_vbo ) mem_free( c->mesh_vbo );
 			c->mesh_vbo_items = geom_items;
@@ -371,7 +367,11 @@ void chunkset_manage(
 
 		} else {
 
+			double t = ctx_time();
 			chunk_make_mask( set, c, mesher[omp_id].mask[buf_id] );
+
+			t = ctx_time()-t;
+			//logf_info("SVLMask time: %f ms (%i)", (t*1000.0), geom_items);
 
 			uint32_t geom_items2 = 0;
 

@@ -115,9 +115,10 @@ void gfx_svl_draw(
 	glUseProgram(vsplat_shader);
 
 	glEnable( GL_PROGRAM_POINT_SIZE  );
-
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	//glEnable(GL_STENCIL_TEST);
 
 	glDisable( GL_CULL_FACE );
 
@@ -187,6 +188,8 @@ void gfx_svl_draw(
 		*item_count += g->vbo_items/4;
 
 	}
+
+	//glDisable(GL_STENCIL_TEST);
 }
 
 #define MIN(a,b) (((a)<(b))?(a):(b))

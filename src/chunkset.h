@@ -229,21 +229,18 @@ void chunkset_manage( struct ChunkSet* );
 void chunk_compress(struct ChunkSet *set, struct ChunkMD *c);
 
 
-uint8_t sample_shadow( 
+int shadow_sample( 
 	struct ChunkSet *set, 
 	uint32_t *ws 
 );
+/*
 uint8_t sample_shadow_c( 
 	struct ChunkSet *set, 
 	struct ChunkMD *c, 
-	uint16_t *ws 
-);
-void chunkset_create_shadow_map( 
+	int16_t *ws 
+);*/
+void shadow_init( 
 	struct ChunkSet *set
-);
-void shadow_update(
-	struct ChunkSet *set,
-	uint32_t *ws
 );
 void shadow_place_update(
 	struct ChunkSet *set,
@@ -252,11 +249,6 @@ void shadow_place_update(
 void shadow_break_update(
 	struct ChunkSet *set,
 	uint32_t *ws
-);
-uint32_t shadow_map_index( 
-	struct ChunkSet *set, 
-	uint32_t x, 
-	uint32_t y 
 );
 
 

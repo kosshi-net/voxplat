@@ -115,6 +115,7 @@ float get_height(struct ChunkSet *set, uint32_t x, uint32_t z){
 		(e0+e1+e2);
 
 	float h = ((pow((e0+e1+e2+e3)*a0, 1.23) )*130.0f);
+	//float h = ((pow((e0+e1+e2+e3)*a0, 1.23) )*512.0f);
 
 	hz = 5.0;
 	h += 3 * noise_simplex( x*hz, 0, z*hz );

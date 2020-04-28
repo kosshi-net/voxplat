@@ -67,9 +67,9 @@ add_executable( game
 set_property(TARGET game PROPERTY C_STANDARD 99)
 
 target_compile_options( game PUBLIC
-	"-O3"
-	"-march=native"
-	"-ftree-vectorize"
+	"-O1"
+	#"-march=native"
+	#"-ftree-vectorize"
 	"-Wformat-truncation=0"
 	"-Wall"
 	"-static"
@@ -77,10 +77,10 @@ target_compile_options( game PUBLIC
 )
 
 target_link_libraries( game
+	noise
 	gfx 
 	ctx	
 	res	
-	noise	
 	ecs	
 	
 #	"-static"

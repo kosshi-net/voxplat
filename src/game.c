@@ -211,19 +211,13 @@ void task_brush( void *a ){
 	);
 	if( hit_voxel < 1 ) return;
 
-	if( arg->brush_voxel ) 
+	if( arg->brush_voxel )
 		for( int i = 0; i < 3; i++  ) hitcoord[i]+=normal[i];
 
-
-	if( arg->brush_size == 1 )
-		chunkset_edit_write( arg->set, 
-			(uint32_t*)hitcoord, arg->brush_voxel 
-		);
-	else
-		chunkset_edit_sphere( 
-			arg->set, hitcoord, 
-			cfg_get()->brush_size, arg->brush_voxel 
-		);	
+	chunkset_edit_sphere( 
+		arg->set, hitcoord, 
+		cfg_get()->brush_size, arg->brush_voxel 
+	);	
 
 }
 
@@ -262,7 +256,7 @@ int game_init(){
 		cfg_get()->chunk_size, cfg_get()->world_size
 	);
 	chunkset_clear( set ); 
-	chunkset_create_shadow_map( set );
+	shadow_init( set );
 	chunkset_gen( set );
 	cam.yaw = 90.0+45.0;
 	cam.location[0] = 64.0;
@@ -311,6 +305,7 @@ void push_octree_aabb( uint16_t *octree, uint8_t lod ){
 	);
 }
 
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 void octree_cull(
@@ -319,7 +314,6 @@ void octree_cull(
 	uint8_t x,
 	uint8_t y,
 	uint8_t z
-	//struct ChunkMD **queue
 ){
 	debug_walks++;
 
@@ -346,8 +340,10 @@ void octree_cull(
 
 	float distance = glm_vec_distance( cam.lod_origin, center );
 
-	//if( distance > (pow(lod,2))*700
-	if( distance > lod*(1024)-256 ){
+	// This if controls the LOD distance and behavior!
+	//if( distance > (pow(lod,2))*1024 ){
+	if( distance > lod*(768) ){
+	//if( distance > lod*(512) ){
 	
 		uint8_t octree_bitw[3];
 		for (int i = 0; i < 3; ++i)
@@ -371,7 +367,7 @@ void octree_cull(
 		if( !g->vbo ) return;
 
 		if( cfg_get()->debug_show_chunk_borders )
-		push_octree_aabb( (uint16_t[]){x,y,z}, lod+set->root_bitw );
+			push_octree_aabb( (uint16_t[]){x,y,z}, lod+set->root_bitw );
 
 		queue_gsvl[queue_gsvl_count++] = g;
 
@@ -504,16 +500,12 @@ void game_tick(){
 	uint32_t splat_count = 0;
 	uint32_t vertex_count = 0;
 
-
 	queue_gsvl_count = 0;
 	queue_mesh_count = 0;
 	queue_misc_count = 0;
 
 	debug_walks=0;
 	uint16_t cs[3];
-	//for (cs[0] = 0; cs[0] < (set->max[0]>>4); ++cs[0])
-	//for (cs[1] = 0; cs[1] < (set->max[0]>>4); ++cs[1])
-	//for (cs[2] = 0; cs[2] < (set->max[2]>>4); ++cs[2]){
 	for (cs[0] = 0; cs[0] < (set->max[0]>>4)+1; ++cs[0])
 	for (cs[1] = 0; cs[1] < (set->max[1]>>4)+1; ++cs[1])
 	for (cs[2] = 0; cs[2] < (set->max[2]>>4)+1; ++cs[2]){
@@ -685,7 +677,7 @@ void game_tick(){
 	//
 
 	if( cfg_get()->brush_color_random )
-		cfg_get()->brush_color = 63*noise_randf();
+		cfg_get()->brush_color = 63* (noise_randf()*0.5+0.5);
 	
 	int _break = ctx_input_break_block();
 	int _place  = ctx_input_place_block();
@@ -739,6 +731,7 @@ void game_tick(){
 			"Queue    %i / %i (%i nodes in %.1f ms)\n"
 			"RAM      %li / %li MB (SVL %li MB)\n"
 			""
+			"Brush: %i\n"
 			"X: %.2f\n"
 			"Y: %.2f\n"
 			"Z: %.2f\n",
@@ -755,6 +748,8 @@ void game_tick(){
 		cfg_get()->heap >> 20,
 
 		geometry_items * sizeof(uint16_t) >> 20,
+
+		cfg_get()->brush_color,
 
 		cam.location[0], cam.location[1], cam.location[2]
 	);

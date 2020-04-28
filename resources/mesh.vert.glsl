@@ -35,9 +35,6 @@ float unpack_ao( int c ){
 }
 
 float unpack_shadow( int c ){
-	//float darken = c >> 15 & 1;
-	//return (max(darken,0.2));
-	//return max(1-darken, 0.7);
 	return float(c >> 15 & 1);
 }
 

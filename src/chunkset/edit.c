@@ -204,7 +204,6 @@ void chunkset_edit_sphere(
 	struct ChunkMD **c = list;
 	if(!*c) return;
 
-	//do logf_info("%p", *c) while(*++c);
 
 	int32_t u[3];
 
@@ -227,10 +226,10 @@ void chunkset_edit_sphere(
 				//chunkset_edit_write(set, u, voxel);
 				
 				if(voxel)
-					shadow_place_update(set, u);
+					shadow_place_update(set, (uint32_t*)u);
 				else{
 					chunk_close_rw(set, *c); 
-					shadow_break_update(set, u);
+					shadow_break_update(set, (uint32_t*)u);
 					chunk_open_rw(set, *c); 
 				}
 			}

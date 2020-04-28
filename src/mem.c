@@ -14,17 +14,29 @@
 /*
  * Memory allocating and debugging wrapper
  * 
+ * The original motivation behind this allocator was to set a real memory
+ * limit. I got tired of system malloc fragmenting things up so bad this game
+ * took like 2-3 times what it itself reported.
  */
 
 #define ALLOC_TABLE_SIZE (1024*512)
 
 
-/* Uncomment only for debugging */
+// Uncomment only for debugging
 //#define USE_SYSTEM_ALLOC
-/* If a slight buffer overrun doesn't still segfault, fill the alloc function
+
+/* 
+ * If a slight buffer overrun doesn't still segfault, fill the alloc function
  * with mem_print_block, it will print what line allocated the previous block
  * that corrupt your links
- * Todo: dumb function names
+ *
+ * TODO: dumb function names
+ *
+ * Performance compared to system malloc on a Linux system:
+ * ~100 times slower allocation
+ * ~100 times faster deallocation
+ * 
+ * Avoid using this allocator for anything performance critical.
  */
 
 pthread_mutex_t mem_mtx = PTHREAD_MUTEX_INITIALIZER;

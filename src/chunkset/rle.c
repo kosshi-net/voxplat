@@ -11,35 +11,22 @@
 #include "chunkset.h"
 
 /*
- * RLE
- * 
- * NUM DATA NUM DATA NUM DATA NULL
- * 
- * Terminate when NUM is 0 
- *
- * Note:
- * When changing voxel byte size in chunkset.h, some edits here may be necessary
- */
-
-
-/*
 	New RLE format
-	RLE Header:
-
-	INT Total including header 
-	INT Length of actual RLE data
 
 	32 bit ints where
 	8 bit data, 24 bit run length
 
+	Makes it possible to encode single voxel chunks with a single integer.
+	256^3 is the maximum chunk size for this
+	cbrt(2**24) = 256 
 */
 
 
 #define BITMASK 0xFFFFFF
 #define BITSHIFT 24
 
-
-pthread_mutex_t rle_work_mutex = PTHREAD_MUTEX_INITIALIZER;
+// Mutex unused atm
+pthread_mutex_t rle_work_mutex = PTHREAD_MUTEX_INITIALIZER; 
 
 uint32_t *rle_work_buf = NULL;
 uint32_t  rle_work_buf_len = 0;
@@ -56,22 +43,6 @@ int rle_init(){
 
 Voxel *rle_compress( Voxel* data, uint32_t length )
 {
-	/*
-	//logf_info("Compress");
-	pthread_mutex_lock( &rle_work_mutex  );
-
-	if( rle_work_buf_len < length  ){
-		logf_info( "Resizing working buffer from %i to %i", 
-			rle_work_buf_len, 
-			length 
-		);
-		if(rle_work_buf != NULL) mem_free(rle_work_buf);
-		rle_work_buf_len = length;
-
-		//rle_work_buf = mem_alloc( rle_work_buf_len*sizeof(uint32_t) );
-	}
-	*/
-	//uint32_t work_buf 
 
 	rle_work_buf_len = length;;
 
@@ -111,7 +82,6 @@ Voxel *rle_compress( Voxel* data, uint32_t length )
 
 	mem_free( _work_buf );
 
-	//pthread_mutex_unlock( &rle_work_mutex  );
 
 	return buf;
 }
@@ -119,14 +89,10 @@ Voxel *rle_compress( Voxel* data, uint32_t length )
 
 Voxel *rle_decompress( void *vdata  )
 {
-	//Voxel *_work_buf = (Voxel*)rle_work_buf;
 
 	uint32_t *data = (uint32_t*)vdata;
 
 	Voxel *_work_buf = mem_alloc( rle_work_buf_len );
-
-	//logf_info("Decompress");
-	//pthread_mutex_lock( &rle_work_mutex  );
 
 	uint32_t i = 0;
 	uint32_t b = 0;
@@ -138,9 +104,6 @@ Voxel *rle_decompress( void *vdata  )
 
 		memset(_work_buf+b, item, count);
 		b+=count;
-		//for (int j = 0; j < count; ++j)
-		//	_work_buf[b++] = item;
-
 		
 	} while( data[++i] );
 	
@@ -148,45 +111,7 @@ Voxel *rle_decompress( void *vdata  )
 
 	memcpy( buf, _work_buf, b*sizeof(Voxel) );
 	mem_free( _work_buf );
-	//pthread_mutex_unlock( &rle_work_mutex  );
 
 	return buf;
 }
 
-/*
-size_t rle_size ( uint32_t rle_data ){
-	int i = 0;
-	while( rle_data[i] )
-}
-*/
-
-
-Voxel chunk_read_index( Voxel *data, uint32_t index ){
-
-	uint32_t count = 0;
-	uint32_t i = 0;
-
-	do {
-		count += data[i] & BITMASK;
-		if( count < index ) return (data[i-1]>>BITSHIFT);
-	} while ( data[++i] );
-
-	return 0;
-	
-}
-
-/*
-Voxel chunk_write_index( Voxel *data, uint32_t index, uint32_t data ){
-
-	uint32_t count = 0;
-	uint32_t i = 0;
-
-	do {
-		count += data[i] & BITMASK;
-		if( count < index ) return (data[i-1]>>BITSHIFT);
-	} while ( data[++i] );
-
-	return 0;
-	
-}
-*/

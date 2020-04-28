@@ -110,7 +110,8 @@ void gfx_vmesh_draw(
 	glUseProgram(vmesh_shader);
 	glBindVertexArray(vmesh_vao);
 
-
+	glEnable( GL_CULL_FACE );
+	glCullFace( GL_BACK );
 
 	glUniformMatrix4fv(
 		vmesh_shader_u_projection, 
@@ -163,6 +164,7 @@ void gfx_vmesh_draw(
 	}
 	glBindVertexArray(0);
 	
+	glDisable( GL_CULL_FACE );
 
 	return;
 };

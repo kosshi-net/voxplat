@@ -60,7 +60,8 @@ vec3 ss2wsVec(float x, float y){
 void main(void) {
 
 	//vec3 light = normalize( vec3(0.0, -1.0, 0.0)  );
-	vec3 light = normalize( vec3(1.0, 1.0, 1.0)  );
+	//vec3 light = normalize( vec3(1.0, 1.0, 1.0)  );
+	vec3 light = normalize( vec3(-1.0, 1.0, 0)  );
 
 	vec3 vxl = vVert.xyz;
 
@@ -141,9 +142,13 @@ void main(void) {
 		float fog_start = 256.0/u_far;
 		float fog = pow( max(gl_FragDepth-fog_start,0.0001), 0.5);
 
+
+
+		vec3 fog_color = vec3(0.5, 0.5, 0.7);
+
 		out_Color = vec4( mix( 
 			color, 
-			vec3( 0.5, 0.5, 0.7), // Color of the sky
+			fog_color,
 			(fog)
 		), 1.0 );
 	
