@@ -82,7 +82,9 @@ void *mesher_loop( void*ptr  ){
 		chunkset_manage( set );
 		usleep( 5 * 1000  ); // N * 1ms
 	}
+	logf_info("Mesher loop quit");
 	pthread_exit(NULL);
+
 	return NULL;
 }
 
@@ -162,6 +164,11 @@ void command_freeze_frustum( int argc, char **argv ){
 	logf_info("%i", *r);
 }
 
+void command_kill( int argc, char **argv ){
+    event_fire(EVENT_EXIT, NULL);
+	logf_info("Kill event fired");
+}
+
 
 void command_chunkset_edit( int argc, char **argv ){
 	if( argc == 6 && strcmp(argv[1], "set") == 0 ){
@@ -232,7 +239,7 @@ int game_init(){
 
 	shell_bind_command("sensitivity", 			&command_sensitivity);
 	shell_bind_command("speed", 				&command_speed);
-	//shell_bind_command("fov", 					&command_fov);
+	shell_bind_command("fov", 					&command_fov);
 
 	shell_bind_command("chunkset_edit", 		&command_chunkset_edit);
 
@@ -245,6 +252,7 @@ int game_init(){
 
 	shell_bind_command("draw_distance",			&command_draw_distance);
 	shell_bind_command("freeze_frustum",		&command_freeze_frustum);
+	shell_bind_command("kill",		&command_kill);
 
 	
 
@@ -342,7 +350,7 @@ void octree_cull(
 
 	// This if controls the LOD distance and behavior!
 	//if( distance > (pow(lod,2))*1024 ){
-	if( distance > lod*(768) ){
+	if( distance > lod*(1024) ){
 	//if( distance > lod*(512) ){
 	
 		uint8_t octree_bitw[3];
@@ -394,6 +402,7 @@ void game_tick(){
 	double now = ctx_time();
 	double delta = now - last_time;
 
+
 	fps_counter++;
 	if( now > last_fps_update+0.25 ){
 		last_fps_update = now;
@@ -413,6 +422,7 @@ void game_tick(){
 	cam.fov =  cfg_get()->fov;
 
 	double cur_x, cur_y;
+
 	ctx_cursor_movement( &cur_x, &cur_y  );
 	cam.yaw 	-= cur_x * cfg_get()->sensitivity;
 	cam.pitch 	-= cur_y * cfg_get()->sensitivity;
@@ -506,6 +516,7 @@ void game_tick(){
 
 	debug_walks=0;
 	uint16_t cs[3];
+	
 	for (cs[0] = 0; cs[0] < (set->max[0]>>4)+1; ++cs[0])
 	for (cs[1] = 0; cs[1] < (set->max[1]>>4)+1; ++cs[1])
 	for (cs[2] = 0; cs[2] < (set->max[2]>>4)+1; ++cs[2]){
@@ -519,7 +530,7 @@ void game_tick(){
 	//
 
 	glClearColor( 0.5, 0.5, 0.7, 1.0  );
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 	gfx_sky_draw(&cam);
 
@@ -550,7 +561,6 @@ void game_tick(){
 		queue_gsvl_count,
 		&splat_count
 	);
-
 	if( cfg_get()->debug_show_chunk_borders ){
 		gfx_aabb_draw( 
 			&cam,
@@ -594,7 +604,6 @@ void game_tick(){
 	uint8_t block_upload = 0;
 
 	uint32_t geometry_items = 0;
-
 	for( int i = 0; i < set->count; i++  ){
 		struct ChunkMD *c = &set->chunks[i];
 
@@ -606,7 +615,7 @@ void game_tick(){
 
 		float distance = glm_vec_distance( chunk_center_ws, cam.lod_origin );
 
-		uint8_t new_value = distance < 128;
+		uint8_t new_value = distance < 512; // Controls range of lod -1
 
 
 		// help
@@ -647,7 +656,6 @@ void game_tick(){
 		block_upload = 0;
 		unblock_until = now + 0.1;
 	}
-
 	if(!block_upload){
 		for (int i = 0; i < qs_c; ++i){
 			struct ChunkMD *c = &set->chunks[qs[i]];
@@ -681,7 +689,7 @@ void game_tick(){
 	
 	int _break = ctx_input_break_block();
 	int _place  = ctx_input_place_block();
-
+	
 	if( (_break || _place) 
 		&& last_raytrace + (1.0f/60.0f) < now
 	){
@@ -718,8 +726,6 @@ void game_tick(){
 	float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
 	glClear( GL_DEPTH_BUFFER_BIT  );
-
-
 
 	static char charbuf[512];
 
@@ -765,13 +771,15 @@ void game_tick(){
 	gfx_crosshair_draw();
 
 	//ctx_swap_buffers();
+	
 	glFlush();
 
 	// Frame limit
 	capped = ' ';
 	double worked = ctx_time();
-	if( worked-now < 0.0032 && fps > 280) {
-		while( ctx_time() < now+0.0032 ) usleep(50);
+	
+	if( worked-now < 0.0032 ) {
+		while( ctx_time() < now+0.0032 ) usleep(500);
 		capped = '*';
 	}
 

@@ -39,10 +39,10 @@ set( VERSION_MINOR 11 )
 ### CLI OPTIONS ###
 	option( DEBUG "Compile in debugging mode" )
 	
-	if(DEBUG)
-		set( CMAKE_BUILD_TYPE Debug ) 
-		set( CMAKE_BUILD_TYPE RelWithDebInfo )
-	endif(DEBUG)
+	#if(DEBUG)
+	#	set( CMAKE_BUILD_TYPE Debug ) 
+	#	set( CMAKE_BUILD_TYPE RelWithDebInfo )
+	#endif(DEBUG)
 
 ### LIBRARIES ### 
 

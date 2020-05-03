@@ -41,7 +41,7 @@ void chunkset_gen_tree( struct ChunkSet* set, uint32_t x, uint32_t z ){
 			memcpy( ws3, ws2, 3*sizeof(uint32_t));
 			ws3[0] -= x; ws3[1] -= y; ws3[2] -= z;
 			chunkset_edit_write( set, ws3, 4 );
-			shadow_place_update(set, ws3);
+			shadow_place_update( set, ws3);
 		}
 		//memcpy( ws2, ws, 3*sizeof(uint32_t));
 		ws2[0] -= 1; ws2[1] += 4; ws2[2] -= 1;
@@ -50,13 +50,14 @@ void chunkset_gen_tree( struct ChunkSet* set, uint32_t x, uint32_t z ){
 	// Trunk
 	for( int i = 0; i < 14; i++ ){
 		chunkset_edit_write( set, ws, 36 );
+		shadow_place_update( set, ws);
 		ws[1]++;
 	}
 	chunkset_edit_write( set, ws, 4 );
-	shadow_place_update(set, ws);
+	shadow_place_update( set, ws);
 	ws[1]++;
 	chunkset_edit_write( set, ws, 4 );
-	shadow_place_update(set, ws);
+	shadow_place_update( set, ws);
 
 }
 // DEPRICATED

@@ -67,8 +67,8 @@ add_executable( game
 set_property(TARGET game PROPERTY C_STANDARD 99)
 
 target_compile_options( game PUBLIC
-	"-O1"
-	#"-march=native"
+	"-O2"
+	"-march=native"
 	#"-ftree-vectorize"
 	"-Wformat-truncation=0"
 	"-Wall"
@@ -83,8 +83,9 @@ target_link_libraries( game
 	res	
 	ecs	
 	
-#	"-static"
-#	"-static-libgcc"
+	"-static"
+	"-static-libgcc"
+	"-fopenmp"
 
 	"${OpenMP_CXX_FLAGS}"	
 	OpenMP::OpenMP_CXX

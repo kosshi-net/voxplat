@@ -8,18 +8,14 @@ uniform mat4 u_view_translation;
 uniform float u_far;
 
 out vec3 vColor;
+out vec2 vUV;
 out vec3 vNormal;
 out float vDepth;
 
 out float ndotl;
 
-vec3 unpack6bit_float(float c){
-	vec3 color;
-	color.r = floor(  c/16 );
-	color.g = floor( (c - color.r*16) / 4  );
-	color.b = floor(  c - color.r*16 - color.g*4  );
-	return color / 3;
-}
+flat out int vDiamond;
+
 
 vec3 unpack_color(int c){
 	vec3 color;
@@ -35,9 +31,16 @@ float unpack_ao( int c ){
 }
 
 float unpack_shadow( int c ){
-	return float(c >> 15 & 1);
+	return float(c >> 13 & 1);
 }
 
+int unpack_diamond( int c ){
+	return (c >> 14 & 3);
+}
+
+int unpack_uv( int c ){
+	return (c >> 11) & 3;
+}
 
 vec3 unpack_normal(int c){
 	vec3 lut[] = vec3[6](
@@ -71,10 +74,21 @@ void main(void) {
 	vNormal = unpack_normal(aColor);
 	vColor = 
 		unpack_color(aColor) *
-		max( 1.0 - unpack_shadow(aColor), 0.7) *
+		max( 1.0 - unpack_shadow(aColor), 0.6) *
 		(1.0-unpack_ao(aColor)*aow)
 		;
-	//vColor = unpack_normal(aColor);
+		
+	vec2 clut[] = vec2[4](
+		vec2( 0, 0 ),
+		vec2( 1, 0 ),
+		vec2( 1, 1 ),
+		vec2( 0, 1 )
+	);
+
+	vUV = clut[unpack_uv(aColor)];
+
+
+	vDiamond = unpack_diamond(aColor);
 
 }
 

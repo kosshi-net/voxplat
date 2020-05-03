@@ -7,7 +7,9 @@ uniform float u_far;
 
 in vec3 vColor;
 in vec3 vNormal;
+in vec2 vUV;
 in float vDepth;
+flat in int vDiamond;
 
 out vec4 out_Color;
 
@@ -22,8 +24,27 @@ void main(void) {
 	vec3 r = -vNormal;
 	//vec3 r = reflect( ray, vNormal );
 
+
+
 	vec3 color;
-	color = vColor * max( max(0.7, ndotl), sign( dot(r, light) ) );
+
+	
+
+	//s = ndotl*s;
+
+	//color = vColor * max( max(0.7, /*ndotl*/ 1.0), sign( dot(r, light) ) );
+	
+	color = vColor;
+
+	//if(ndotl < 0.5)
+	if ( !bool( vDiamond >> int( vUV.x < vUV.y ) & 1) )
+		color = vColor*0.6;
+
+	if( vNormal.y < -0.9 
+	 || vNormal.x >  0.9 )
+		color = vColor*0.6;
+
+	
 
 	gl_FragDepth = vDepth;
 

@@ -58,7 +58,7 @@ void cfg_init( int argc, char **argv ){
 	config.heap 			= parse_long( "1G" );
 	config.sensitivity		= 0.15;
 	config.speed			= 75.0;
-	config.fov				= 90.0;
+	config.fov				= 80.0;
 	config.draw_distance	= 1024*4;
 	config.brush_color		= 63;
 	config.brush_size		= 4;

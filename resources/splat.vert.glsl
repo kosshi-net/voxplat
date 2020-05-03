@@ -42,8 +42,10 @@ void main(void) {
 		abs( gl_Position.x*ratio/gl_Position.w  ),
 		abs( gl_Position.y/gl_Position.w  )
 	);
-	reduce += 1.0; // Increasing this increases overdraw nearing edges
-	float size = ( uViewport.y*0.70 ) / gl_Position.z * max(reduce, 1.0);
+	// Following two values directly affect performance.
+	reduce += 0.03; 		// Overdraw nearing edges
+	float scale = 1.05; 	// Base size
+	float size = ( uViewport.y*1.1 ) / gl_Position.z * max(reduce, 1.0);
 	gl_PointSize = size * u_lod;
 
 	vColor = unpack6bit(aColor); 

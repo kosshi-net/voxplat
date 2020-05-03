@@ -16,7 +16,6 @@
 
 #define SHELL_INPUT_SIZE 128
 
-void shell_run(char*cmd);
 
 size_t parse_long(char *c){
 	size_t num = 0;
@@ -61,13 +60,6 @@ void command_echo(int argc, char** argv){
 		_log_info(argv[i]);
 	}
 }
-
-void command_run(int argc, char** argv){
-	for(int i = 1; i < argc; i++){
-		shell_run(argv[i]);
-	}
-}
-
 void command_ayy(){
 	_log_info("lmao");
 }
@@ -75,7 +67,6 @@ void command_ayy(){
 void command_clear(){
 	log_clear();
 }
-
 
 void command_exit(){
     event_fire(EVENT_EXIT, NULL);
@@ -87,14 +78,13 @@ void command_exit(){
 }
 void command_help();
 // Map them
-int command_count = 6; // <------------------- !!!
-struct Command commands [128] = {
-	{ .name = "echo", 		.run = &command_echo },
-	{ .name = "run",  		.run = &command_run },
-	{ .name = "help", 		.run = &command_help },
-	{ .name = "clear",		.run = &command_clear },
-	{ .name = "ayy",  		.run = &command_ayy },
-	{ .name = "exit", 		.run = &command_exit }
+int command_count = 5; // <------------------- !!!
+struct Command commands [64] = {
+	{ .name = "echo", .run = &command_echo },
+	{ .name = "help", .run = &command_help },
+	{ .name = "clear", .run = &command_clear },
+	{ .name = "ayy", .run = &command_ayy },
+	{ .name = "exit", .run = &command_exit }
 };
 
 void command_help(){
@@ -152,52 +142,29 @@ void shell_autocomplete(){
 	shell_inbuf_len = strlen(candidate);
 }
 
-
-void shell_run(char*p){
-
-	while(*p == ' ') p++;
-	if(*p == 0) return;
-	logf_info("Run: %s", p);
+void shell_send(){
+	// Print command
+	char tb[SHELL_INPUT_SIZE+2];
+	sprintf( tb, "> %s", shell_inbuf );
+	_log_info( tb );
 	
 	// Split and fill argv
-	char* argv[SHELL_INPUT_SIZE/2];
+	char *argv[SHELL_INPUT_SIZE/2];
 	int32_t size = SHELL_INPUT_SIZE; 
 	argv[1] = argv[0] = mem_alloc( size );
 	uint8_t argc = 1;
 
-	// Main parser
-	char last_quote = 0;
-	int quotes = 0;
-	int semicolon = 0;
-	do {
-		if(*p == ';' && !quotes) {
-			*p = 0;
-			semicolon = 1;
-		}
-		if( (*p == '"' || *p == '\'') ) {
-
-			int skip = 0;
-
-			if( last_quote == *p ){
-				if( quotes == 1 ) skip++;
-				quotes--;
-				last_quote = (*p == '\'') ? '"' : '\'' ; 
-			}else{
-				if( quotes == 0 ) skip++;
-				quotes++;
-				last_quote = *p;
-			}
-			if(skip) continue;
-		}
-		if( *p == ' ' && !quotes ) {
+	char *p = shell_inbuf;
+	do 
+		if( *p == ' ' ) {
 			*argv[argc++]++ = 0;
 			argv[argc] = argv[argc-1];
-		} else {
+		} else 
 			*argv[argc]++ = *p;
-		}
-	} while( *p++ && --size );
+	while( *p++ && --size );
 
-	// Find the command and run it
+	shell_inbuf_len = 0;
+	memset( shell_inbuf, 0, sizeof(shell_inbuf) );
 	for( int i = 0; i < command_count; i++ ){ 
 		if( strcmp(argv[0], commands[i].name) == 0 ){
 			commands[i].run( argc, argv );
@@ -206,25 +173,10 @@ void shell_run(char*p){
 	}
 	logf_warn("Command not found");
 	exit:
-	mem_free(argv[0]);
-	if(semicolon) shell_run(p);
-}
-
-
-
-void shell_send(){
-	// Print command
-	char tb[SHELL_INPUT_SIZE+2];
-	sprintf( tb, "> %s", shell_inbuf );
-	_log_info( tb );
 	
-	shell_run(shell_inbuf);
-
-	shell_inbuf_len = 0;
-	memset( shell_inbuf, 0, sizeof(shell_inbuf) );
+	mem_free(argv[0]);
 
 }
-
 
 char* shell_input_buffer(){
 	return shell_inbuf;

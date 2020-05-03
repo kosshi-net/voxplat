@@ -20,6 +20,8 @@
  */
 
 
+#define SH_MAX_X set->shadow_map_size[0]
+#define SH_MAX_Z set->shadow_map_size[1]
 
 void shadow_init(
 	struct ChunkSet *set
@@ -44,8 +46,8 @@ uint32_t shadow_index(
 	struct ChunkSet *set,
 	uint32_t ws[3]
 ){
-	uint32_t max_x = set->shadow_map_size[0];
-	return (ws[0] + ws[1]) + ( max_x * ws[2] );
+	//uint32_t max_x = set->shadow_map_size[0];
+	return (ws[0] + ws[1]) + ( SH_MAX_X * ws[2] );
 }
 
 // returns 1 if in shadow
@@ -54,7 +56,22 @@ int shadow_sample(
 	uint32_t *ws
 ){
 	uint32_t index = shadow_index( set, ws );
-	return !(set->shadow_map[ index ] < ws[1]+1);
+	return !(
+		set->shadow_map[ index ] < ws[1]+1 &&
+		set->shadow_map[ index+1 ] < ws[1]+1
+	);
+}
+
+int shadow_sample_normal( 
+	struct ChunkSet *set,
+	uint32_t *ws,
+	uint32_t normal
+){
+	uint32_t index = shadow_index( set, ws );
+	return !(
+		set->shadow_map[ index   ] < ws[1]+1 &&
+		set->shadow_map[ index-1 ] < ws[1]+1
+	);
 }
 
 void shadow_place_update(

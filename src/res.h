@@ -27,17 +27,13 @@
 	add(noise_png)\
 
 // Debug tip:
-// If you get a bunch of undefined references to [_]binary*,
+// If you get a bunch of undefined references to _binary*, run:
 // "objdump -t resources.o"
-// Do note that MinGW seems to strip the first underscore.
+// Some versions of MinGW strip the first underscore.
 
-#if __MINGW32__
-	#define START(f) 	binary_ ## f ## _start
-	#define END(f) 		binary_ ## f ## _end
-#else
-	#define START(f) 	_binary_ ## f ## _start
-	#define END(f) 		_binary_ ## f ## _end
-#endif
+#define START(f) 	_binary_ ## f ## _start
+#define END(f) 		_binary_ ## f ## _end
+
 
 #define SIZE(f) 	END(f) - START(f)
 #define CASE_START(f) 	case f: return START(f);

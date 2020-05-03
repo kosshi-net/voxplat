@@ -62,7 +62,7 @@ void locking_progress_callback(void* ptr)
 		logf_warn("Uncleanly exiting via locking_progress_callback");
     	event_fire(EVENT_EXIT, NULL);
 		gfx_shell_exclusive_draw();
-		sleep(1);
+		
 		exit(0);
 	}
 
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 		VERSION_MAJOR,
 		VERSION_MINOR	
 	);
-	logf_info( "Copyright 2018 kosshi.net" );
+	logf_info( "Copyright 2020 kosshi.net" );
 	
 	log_compiler_info();
 
@@ -145,7 +145,6 @@ int main(int argc, char **argv)
     event_fire(EVENT_EXIT, NULL);
 	log_info("Goodbye!");
 	gfx_shell_exclusive_draw();
-	sleep( 1 );
 	ctx_terminate();
 	exit(0);
 }

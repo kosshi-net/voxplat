@@ -280,10 +280,42 @@ void chunk_make_mesh(
 			for (int i = 0; i < 3; ++i)
 				ws[i] = (c.offset[i] << set.root_bitw) + BLOCK[i];
 
-			uint16_t shadow = shadow_sample(setp, ws);
+
+			uint16_t shadow = 0; 
+
+
+
+
+			// Shadow is actually light level!!!
+			//uint16_t shadow = i==1;
+
 			uint8_t  normal = (A==0);
 
+			
+			if(i==0 && normal)
+				shadow = shadow_sample_normal(setp, ws, i);
+			else if (i==1 && !normal)
+				shadow = shadow_sample(setp, ws);
+
 			ws[i] -= normal;
+
+			int diamond = 3; 
+
+
+
+			if( i == 2 ){
+				shadow = 0;
+				uint32_t sws[3];
+				memcpy( sws, ws, 3*sizeof(uint32_t) );
+
+				if(!B)
+					sws[2]+=1;
+
+				diamond = (!shadow_sample(setp, sws))<<1;
+				sws[1]-=1;
+				diamond |= (!shadow_sample(setp, sws));
+				
+			}
 
 			int face = i;
 			for( int vertex = 0; vertex < 4; vertex++ ){
@@ -295,13 +327,19 @@ void chunk_make_mesh(
 					);
 				}
 
+
 				// Push voxel data
 				geometry[v++] = 
 					(A|B) | 
 					( vertex_ao[vertex]  << 6) |
 					((face + (3*normal)) << 8) |
-					(shadow              <<15) ;
+					(vertex				 <<11) |
+					(shadow              <<13) |
+					(diamond			 <<14); 
 			}
+
+			
+			// __SUVNNN AORRGGBB
 
 			// Fill index buffer
 			for( int vertex = 0; vertex < 6; vertex++ ){

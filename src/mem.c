@@ -7,7 +7,7 @@
 
 #include "shell.h"
 
-#include "ctx.h" // Only for ctx_time
+#include "ctx.h" // Only for ctx_time for optional bencharking
 
 #include <pthread.h>
 
@@ -16,13 +16,22 @@
  * 
  * The original motivation behind this allocator was to set a real memory
  * limit. I got tired of system malloc fragmenting things up so bad this game
- * took like 2-3 times what it itself reported.
+ * took like 2-3 times what it itself reported, leading my development machine
+ * to lock up thanks to OOM.
+ *
+ * Performance compared to system malloc on a Linux system:
+ * ~100 times slower allocation
+ * ~100 times faster deallocation
+ * 
+ * Avoid using this allocator for anything performance critical.
+ *
  */
 
 #define ALLOC_TABLE_SIZE (1024*512)
 
 
-// Uncomment only for debugging
+/* Uncomment only for debugging */
+
 //#define USE_SYSTEM_ALLOC
 
 /* 
@@ -32,11 +41,6 @@
  *
  * TODO: dumb function names
  *
- * Performance compared to system malloc on a Linux system:
- * ~100 times slower allocation
- * ~100 times faster deallocation
- * 
- * Avoid using this allocator for anything performance critical.
  */
 
 pthread_mutex_t mem_mtx = PTHREAD_MUTEX_INITIALIZER;

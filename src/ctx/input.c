@@ -4,17 +4,46 @@
 #include "ctx.h"
 #include "ctx/input.h"
 
+
 #include <string.h>
 
 #include "event.h"
 
 #include "shell.h"
+#include "mem.h"
+
+#include "ctx/labels.h"
 
 GLFWwindow *window;
 
 
 InputMode input_mode = INPUT_MODE_NONE;
 InputMode preferred_input_mode = INPUT_MODE_NONE;
+
+
+
+char *binds[LABEL_COUNT] = {0};
+
+
+void command_bind( int argc, char **argv ){
+	if( argc != 3 ) {
+		logf_warn("Usage: bind key command");
+		return;
+	}
+
+	int key = input_label_to_key(argv[1]);
+
+	if(key < 0) {
+		logf_warn("Unkown key");
+		return;
+	}
+
+	binds[key] = mem_calloc(strlen(argv[2]));
+
+	strcpy( binds[key], argv[2] );
+
+}
+
 
 void ctx_input_set_mode( InputMode mode ){
 	input_mode = mode;
@@ -39,7 +68,6 @@ InputMode	ctx_input_preferred_mode(){
 InputMode	ctx_input_mode(){
 	return input_mode;
 }
-
 
 
 int break_event = 0;
@@ -75,9 +103,8 @@ void mouse_key_callback( GLFWwindow* window,
 
 }
 
-
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
+{	
 	switch (input_mode) {
 		case INPUT_MODE_NONE:
 			if(key == GLFW_KEY_F12
@@ -86,6 +113,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			break;
 
 		case INPUT_MODE_GAME:
+
+			if( action == GLFW_PRESS 
+			 && binds[key] 
+			){
+				shell_run(binds[key]);
+			}
 
 
 			if(key == GLFW_KEY_F12
@@ -119,7 +152,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
-
 void character_callback(GLFWwindow* window, unsigned int codepoint)
 {
 
@@ -136,19 +168,20 @@ void character_callback(GLFWwindow* window, unsigned int codepoint)
 	}
 }
 
+
 int ctx_input_init(){
 	window = ctx_get_window();
+	ctx_labels_init();	
+
+	shell_bind_command("bind", &command_bind);
 
 	glfwSetMouseButtonCallback( window, mouse_key_callback );
 	glfwSetKeyCallback( 		window, key_callback );
 	glfwSetCharCallback( 		window, character_callback);
 
-	logf_info( "--------- CONTROLS ---------" );
+	logf_info( "--------- CONTROLS ---------" )
 	logf_info( "Click to lock cursor" );
 	logf_info( "ESC to unlock cursor " );
-	logf_info( "LMB to break voxels" );
-	logf_info( "SHIFT+LMB to break continuously")
-	logf_info( "RMB to place voxels" );
 	logf_info( "WASD to move around" );
 	logf_info( "F12 to toggle shell" );
 	logf_info( "----------------------------" );
